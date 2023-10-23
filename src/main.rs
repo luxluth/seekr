@@ -1,6 +1,5 @@
-use gdk::Display;
 use gtk::prelude::*;
-use gtk::{glib, Application, ApplicationWindow, Box, Entry, Label};
+use relm4::prelude::*;
 use std::path::PathBuf;
 use std::env;
 
@@ -16,73 +15,21 @@ fn get_file_content(path: &PathBuf) -> String {
     }
 }
 
-const APP_ID: &str = "dev.luxluth.fsearch";
-
-fn main() -> glib::ExitCode {
-    let app = Application::builder().application_id(APP_ID).build();
-    app.connect_activate(build_ui);
-    app.run()
-}
-#[derive(Clone, Debug)]
-pub struct EntryText {
-    value: String,
-    entry: Entry
+struct App {
+    input: String,
 }
 
-impl EntryText {
-    pub fn new() -> Self {
-        let entry_input = Entry::builder()
-            .name("EntryInput")
-            .css_name("EntryInput")
-            .placeholder_text("Start typing...")
-            .secondary_icon_tooltip_text("Search")
-            .secondary_icon_name("system-search-symbolic") // need to add icon
-            .enable_emoji_completion(true)
-            .activates_default(true)
-            // take the full width of the box 
-            .hexpand(true)
-            .build();
-
-        EntryText {
-            value: String::new(),
-            entry: entry_input
-        }
-    }
-
-    pub fn build_entry_box(&mut self) -> Box {
-        let entry_box = Box::builder()
-            .name("EntryBox")
-            .css_name("EntryBox")
-            .orientation(gtk::Orientation::Vertical)
-            // take the full width of the window 
-            .hexpand(true)
-            .focusable(false)
-            .build();
-        entry_box.append(&self.entry);
-        
-        self.entry.connect_changed(move |entry| {
-            println!("{}", entry.text().to_string());
-            // setting the value of the entry 
-            // self.value = entry.text().to_string();
-        });
-
-        return entry_box;
-    }
-
-    pub fn set_value(&mut self, new_value: String) {
-        self.value = new_value;
-    }
+#[derive(Debug)]
+enum Msg {
+    SetInput(String),
 }
-
 
 fn load_css() {
-    let provider = gtk::CssProvider::new();
     match env::var("XDG_CONFIG_HOME") {
         Ok(v) => {
             let css_path = PathBuf::from(v).join("fsearch").join("style.css");
             let css_content = get_file_content(&css_path);
-            provider.load_from_string(&css_content);
-
+            relm4::set_global_css(css_content.as_str());
 
         },
         Err(_) => {
@@ -90,7 +37,7 @@ fn load_css() {
                 Ok(v) => {
                     let css_path = PathBuf::from(v).join(".config").join("fsearch").join("style.css");
                     let css_content = get_file_content(&css_path);
-                    provider.load_from_string(&css_content);
+                    relm4::set_global_css(css_content.as_str());
                 },
                 Err(_) => {
                     println!("Could not find config file.");
@@ -99,46 +46,78 @@ fn load_css() {
         },
     }
 
-    gtk::style_context_add_provider_for_display(
-        &Display::default().expect("Could not connect to a display."),
-        &provider,
-        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION
-    );
 }
 
-fn build_ui(app: &Application) {
+#[relm4::component]
+impl SimpleComponent for App {
+    type Init = String;
+    type Input = Msg;
+    type Output = ();
+
+    view! {
+        gtk::ApplicationWindow {
+            set_title: Some("fsearch"),
+            set_default_size: (600, 50),
+            set_decorated: false,
+            set_resizable: false,
+            set_css_classes: &["application"],
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_hexpand: true, 
+                set_focusable: false,
+                set_widget_name: "EntryBox",
+
+                #[name="entry"]
+                gtk::Entry {
+                    set_activates_default: true,
+                    set_hexpand: true,
+                    set_widget_name: "EntryInput",
+                    set_placeholder_text: Some("Start typing..."),
+                    set_secondary_icon_name: Some("loupe-large"),
+                    set_text: &model.input,
+                    connect_changed[sender] => move |entry| {
+                        sender.input(Msg::SetInput(entry.text().to_string()));
+                    },
+                },
+
+                gtk::Label {
+                    set_widget_name: "Tip",
+                    set_hexpand: true,
+                    set_halign: gtk::Align::Start,
+                    set_label: "use @command to run a specific action."
+                }
+            }
+        }
+    }
+
+    // Initialize the component.
+    fn init(
+        input: Self::Init,
+        root: &Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let model = App { input };
+
+        // Insert the code generation of the view! macro here
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+        match msg {
+            Msg::SetInput(input) => {
+                self.input = input;
+            }
+        }
+    }
+}
+
+fn main() {
+    let app = RelmApp::new("relm4.example.simple");
+    relm4_icons::initialize_icons();
     load_css();
-    let mut entry = EntryText::new();
-    let entry_box = entry.build_entry_box();
-    let tip_label = Label::builder()
-        .name("Tip")
-        .css_name("Tip")
-        .label("use @command to run a specific action.")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .build();
-
-    let dynamic_box = Box::builder()
-        .name("DynamicBox")
-        .css_name("DynamicBox")
-        .orientation(gtk::Orientation::Vertical)
-        .hexpand(true)
-        .build();
-
-    entry_box.append(&tip_label);
-    entry_box.append(&dynamic_box);
-
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .decorated(false)
-        .css_name("Application")
-        .css_classes(vec!["application".to_string()])
-        .resizable(false)
-        .default_width(600)
-        .default_height(50)
-        .child(&entry_box)
-        .title("fsearch")
-        .build();
-
-    window.present();
+    app.run::<App>(String::new());
 }
+
