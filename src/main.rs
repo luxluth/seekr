@@ -74,7 +74,7 @@ impl SimpleComponent for App {
                     set_hexpand: true,
                     set_widget_name: "EntryInput",
                     set_placeholder_text: Some("Start typing..."),
-                    set_secondary_icon_name: Some("loupe-large"),
+                    // set_primary_icon_name: Some("loupe"),
                     set_text: &model.input,
                     connect_changed[sender] => move |entry| {
                         sender.input(Msg::SetInput(entry.text().to_string()));

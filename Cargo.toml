@@ -11,5 +11,5 @@ exmex = "0.17.5"
 open = "5.0.0"
 relm4 = "0.6.2"
 relm4-components = "0.6.2"
-relm4-icons = { version = "0.6.0", features = ["loupe-large"] }
+relm4-icons = { version = "0.6.0", features = ["loupe"] }
 
