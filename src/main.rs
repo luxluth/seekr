@@ -1,7 +1,9 @@
+mod exec;
 use gtk::prelude::*;
 use relm4::prelude::*;
 use std::path::PathBuf;
 use std::env;
+
 
 fn get_file_content(path: &PathBuf) -> String {
     let content = std::fs::read_to_string(path);
@@ -53,14 +55,15 @@ impl SimpleComponent for App {
     type Init = String;
     type Input = Msg;
     type Output = ();
-
+    
     view! {
+
         gtk::ApplicationWindow {
             set_title: Some("fsearch"),
             set_default_size: (600, 50),
             set_decorated: false,
             set_resizable: false,
-            set_css_classes: &["application"],
+            set_css_classes: &["application"], 
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
@@ -86,7 +89,15 @@ impl SimpleComponent for App {
                     set_hexpand: true,
                     set_halign: gtk::Align::Start,
                     set_label: "use @command to run a specific action."
-                }
+                },
+
+                #[name="dynamic_box"]
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_hexpand: true,
+                    set_focusable: false,
+                    set_widget_name: "DynamicBox",
+                },
             }
         }
     }
@@ -98,10 +109,7 @@ impl SimpleComponent for App {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = App { input };
-
-        // Insert the code generation of the view! macro here
         let widgets = view_output!();
-
         ComponentParts { model, widgets }
     }
 
@@ -109,6 +117,7 @@ impl SimpleComponent for App {
         match msg {
             Msg::SetInput(input) => {
                 self.input = input;
+                exec::exec(self.input.clone());
             }
         }
     }
