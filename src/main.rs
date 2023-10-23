@@ -62,6 +62,8 @@ impl EntryText {
         
         self.entry.connect_changed(move |entry| {
             println!("{}", entry.text().to_string());
+            // setting the value of the entry 
+            // self.value = entry.text().to_string();
         });
 
         return entry_box;
@@ -71,6 +73,7 @@ impl EntryText {
         self.value = new_value;
     }
 }
+
 
 fn load_css() {
     let provider = gtk::CssProvider::new();
@@ -110,7 +113,7 @@ fn build_ui(app: &Application) {
     let tip_label = Label::builder()
         .name("Tip")
         .css_name("Tip")
-        .label("use @command to run a specific command")
+        .label("use @command to run a specific action.")
         .hexpand(true)
         .halign(gtk::Align::Start)
         .build();
