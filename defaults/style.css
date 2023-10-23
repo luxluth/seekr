@@ -1,0 +1,21 @@
+.application {
+    background: rgba(0, 0, 0, 0);
+}
+
+#EntryBox {
+    background: rgba(40, 40, 40, 0.5);
+    padding: 0.5em;
+    font-family: "Product Sans", sans-serif;
+}
+
+#EntryInput {
+    color: #d5c4a1;
+    font-size: 1.2em;
+    font-weight: 900;
+    caret-color: #d5c4a1;
+}
+
+#EntryInput placeholder {
+    color: rgba(213, 196, 161, 0.5);
+}
+
