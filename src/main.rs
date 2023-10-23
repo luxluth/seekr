@@ -1,6 +1,6 @@
 use gdk::Display;
 use gtk::prelude::*;
-use gtk::{glib, Application, ApplicationWindow, Box, Entry};
+use gtk::{glib, Application, ApplicationWindow, Box, Entry, Label};
 use std::path::PathBuf;
 use std::env;
 
@@ -52,7 +52,7 @@ impl EntryText {
         let entry_box = Box::builder()
             .name("EntryBox")
             .css_name("EntryBox")
-            .orientation(gtk::Orientation::Horizontal)
+            .orientation(gtk::Orientation::Vertical)
             // take the full width of the window 
             .hexpand(true)
             .focusable(false)
@@ -106,7 +106,14 @@ fn build_ui(app: &Application) {
     load_css();
     let mut entry = EntryText::new();
     let entry_box = entry.build_entry_box();
-    
+    let tip_label = Label::builder()
+        .name("Tip")
+        .css_name("Tip")
+        .label("use @command to run a specific command")
+        .hexpand(true)
+        .halign(gtk::Align::Start)
+        .build();
+    entry_box.append(&tip_label);
     let window = ApplicationWindow::builder()
         .application(app)
         .decorated(false)
