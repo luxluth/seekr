@@ -35,7 +35,8 @@ impl EntryText {
             .name("EntryInput")
             .css_name("EntryInput")
             .placeholder_text("Start typing...")
-            // .primary_icon_name("search") need to add icon
+            .secondary_icon_tooltip_text("Search")
+            .secondary_icon_name("system-search-symbolic") // need to add icon
             .enable_emoji_completion(true)
             .activates_default(true)
             // take the full width of the box 
@@ -113,7 +114,17 @@ fn build_ui(app: &Application) {
         .hexpand(true)
         .halign(gtk::Align::Start)
         .build();
+
+    let dynamic_box = Box::builder()
+        .name("DynamicBox")
+        .css_name("DynamicBox")
+        .orientation(gtk::Orientation::Vertical)
+        .hexpand(true)
+        .build();
+
     entry_box.append(&tip_label);
+    entry_box.append(&dynamic_box);
+
     let window = ApplicationWindow::builder()
         .application(app)
         .decorated(false)
