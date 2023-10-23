@@ -9,6 +9,8 @@
 }
 
 #EntryInput {
+    all: unset;
+    background: rgba(0, 0, 0, 0);
     color: #d5c4a1;
     font-size: 1.2em;
     font-weight: 900;
