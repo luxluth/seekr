@@ -19,3 +19,8 @@
     color: rgba(213, 196, 161, 0.5);
 }
 
+#Tip {
+    color: #d5c4a1;
+    font-size: .9em;
+    font-style: italic;
+}
