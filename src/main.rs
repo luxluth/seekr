@@ -115,7 +115,7 @@ impl SimpleComponent for App {
 }
 
 fn main() {
-    let app = RelmApp::new("relm4.example.simple");
+    let app = RelmApp::new("app.luxluth.fsearch");
     relm4_icons::initialize_icons();
     load_css();
     app.run::<App>(String::new());
