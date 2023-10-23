@@ -1,4 +1,11 @@
-const INNER_COMMANDS: [&str; 5] = ["exit", "open", "exp", "help", "dico"];
+const INNER_COMMANDS: [&str; 6] = [
+    "exit", // exit the program 
+    "open", // open a file @open <file>
+    "exp", // evaluate a mathematical expression @exp <expression>
+    "help", // show help
+    "dico", // search in the dictionnary
+    "wiki" // search on wikipedia
+];
 
 pub fn exec(input: String) {
     if input.is_empty() {
