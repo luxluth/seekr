@@ -126,7 +126,7 @@ fn mathematical(input: String) -> Result {
 
 fn mathematical_result(input: String, result: f64) -> Result {
     let mut components: Vec<gtk::Box> = Vec::new();
-    let title = get_section_title(format!("({}) evaluation", input.clone().trim_start()));
+    let title = get_section_title(format!("({}) evaluation", input.clone().trim_start().trim_end()));
     let content = gtk::Label::builder()
         .name("Content")
         .css_name("Content")
@@ -154,7 +154,7 @@ fn mathematical_result(input: String, result: f64) -> Result {
 
 fn mathematical_error(input: String, err: ExError) -> Result {
     let mut components: Vec<gtk::Box> = Vec::new();
-    let title = get_section_title(format!("({}) evaluation", input.clone().trim_start()));
+    let title = get_section_title(format!("({}) evaluation", input.clone().trim_start().trim_end()));
     let content = gtk::Label::builder()
         .name("Content")
         .css_name("Content")
