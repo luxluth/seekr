@@ -1,6 +1,7 @@
 mod exec;
+mod utils;
 use gtk::prelude::*;
-use relm4::prelude::*;
+use relm4::{prelude::*, RelmIterChildrenExt};
 use std::path::PathBuf;
 use std::env;
 
@@ -19,6 +20,7 @@ fn get_file_content(path: &PathBuf) -> String {
 
 struct App {
     input: String,
+    dynamic_box: Option<gtk::Box>,
 }
 
 #[derive(Debug)]
@@ -78,6 +80,7 @@ impl SimpleComponent for App {
                     set_widget_name: "EntryInput",
                     set_placeholder_text: Some("Start typing..."),
                     // set_primary_icon_name: Some("loupe"),
+                    set_enable_emoji_completion: true,
                     set_text: &model.input,
                     connect_changed[sender] => move |entry| {
                         sender.input(Msg::SetInput(entry.text().to_string()));
@@ -108,19 +111,37 @@ impl SimpleComponent for App {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = App { input };
+        let model = App { input, dynamic_box: None };
         let widgets = view_output!();
-        ComponentParts { model, widgets }
+        let mut component_parts = ComponentParts { model, widgets };
+
+        let dynamic_box = component_parts.widgets.dynamic_box.clone();
+        component_parts.model.dynamic_box = Some(dynamic_box.clone());
+
+        component_parts
     }
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             Msg::SetInput(input) => {
                 self.input = input;
-                exec::exec(self.input.clone());
+                let res = exec::exec(self.input.clone());
+                if res.components.len() == 0 {
+                    self.dynamic_box.as_ref().unwrap().iter_children().for_each(|child| {
+                        self.dynamic_box.as_ref().unwrap().remove(&child);
+                    });
+                } else {
+                    self.dynamic_box.as_ref().unwrap().iter_children().for_each(|child| {
+                        self.dynamic_box.as_ref().unwrap().remove(&child);
+                    });
+                    for component in res.components {
+                        self.dynamic_box.as_ref().unwrap().append(&component);
+                    }
+                }
             }
         }
-    }
+    } 
+
 }
 
 fn main() {

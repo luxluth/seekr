@@ -3,7 +3,7 @@
 }
 
 #EntryBox {
-    background: rgba(40, 40, 40, 0.5);
+    background: rgba(40, 40, 40, 0.95);
     padding: 0.5em;
     font-family: "Product Sans", sans-serif;
 }
@@ -17,6 +17,7 @@
     caret-color: #d5c4a1;
 }
 
+
 #EntryInput placeholder {
     color: rgba(213, 196, 161, 0.5);
 }
@@ -25,4 +26,18 @@
     color: #d5c4a1;
     font-size: .9em;
     font-style: italic;
+}
+
+#SectionTitle {
+    color: #d5c4a1;
+    font-size: 1.1em;
+    font-weight: 900;
+    margin-top: .5em;
+}
+
+#Content.mathematical {
+    font-family: "Product Sans", sans-serif;
+    font-size: 4em;
+    font-weight: 900;
+    color: #d5c4a1;
 }
