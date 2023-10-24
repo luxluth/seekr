@@ -161,7 +161,7 @@ fn mathematical_error(input: String, err: ExError) -> Result {
         .css_classes(vec!["matherror"])
         .hexpand(true)
         .halign(gtk::Align::Start)
-        .label(format!("Error: {}", err))     
+        .label(format!("{}", err))     
         .build();
 
     let box_content = gtk::Box::builder()
@@ -352,7 +352,7 @@ fn f(file: String) -> Result {
     let metadata = fs::metadata(path.clone());
     match metadata {
         Ok(meta) => {
-            // is directory -> directory_name size last_modified
+            // is directory -> directory_path size last_modified
             if meta.is_dir() {
                 let directory_name = gtk::Label::builder()
                     .name("DirectoryName")
@@ -360,7 +360,7 @@ fn f(file: String) -> Result {
                     .css_classes(vec!["fileElement"])
                     .hexpand(true)
                     .halign(gtk::Align::Start)
-                    .label(format!("{:?}", path.file_name()))
+                    .label(format!("{}", path.display().to_string()))
                     .build();
 
                 let directory_size = gtk::Label::builder()
@@ -369,7 +369,7 @@ fn f(file: String) -> Result {
                     .css_classes(vec!["fileElement"])
                     .hexpand(true)
                     .halign(gtk::Align::Start)
-                    .label(format!("{}Kb", meta.len() / 1000))
+                    .label(utils::format_size(meta.len()))
                     .build();
                 
                 let directory_last_modified = gtk::Label::builder()
@@ -428,7 +428,7 @@ fn f(file: String) -> Result {
                     .css_classes(vec!["fileElement"])
                     .hexpand(true)
                     .halign(gtk::Align::Start)
-                    .label(format!("{}Kb", meta.len() / 1000))
+                    .label(utils::format_size(meta.len()))
                     .build();
 
                 let file_type = gtk::Label::builder()
@@ -496,7 +496,7 @@ fn f(file: String) -> Result {
                     .css_classes(vec!["fileElement"])
                     .hexpand(true)
                     .halign(gtk::Align::Start)
-                    .label(format!("{}Kb", meta.len() / 1000))
+                    .label(utils::format_size(meta.len()))
                     .build();
 
                 let symlink_type = gtk::Label::builder()
