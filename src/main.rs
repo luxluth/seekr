@@ -84,7 +84,7 @@ impl SimpleComponent for App {
                     set_hexpand: true,
                     set_widget_name: "EntryInput",
                     set_placeholder_text: Some("Start typing..."),
-                    set_primary_icon_name: Some("loupe"),
+                    // set_primary_icon_name: Some("loupe"),
                     set_enable_emoji_completion: true,
                     set_text: &model.input,
                     connect_changed[sender] => move |entry| {
