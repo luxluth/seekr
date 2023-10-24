@@ -313,11 +313,25 @@ fn command(cmd: &str, input: String) -> Result {
     }
 }
 
+fn expand_tilde(path: String) -> String {
+    if path.starts_with("~") {
+        match std::env::var("HOME") {
+            Ok(home) => {
+                return path.replace("~", home.as_str());
+            },
+            Err(_) => {
+                return path;
+            },
+        }
+    }
+    path
+}
+
 fn f(file: String) -> Result {
     // find in the file system
     let mut components: Vec<gtk::Box> = Vec::new();
     let title = get_section_title("File".to_string());
-
+    let file = expand_tilde(file);
     // check if the file exists
     let path = PathBuf::from(file.clone());
     if !path.exists() {
