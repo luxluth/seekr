@@ -1,4 +1,5 @@
 use crate::utils;
+use exmex::ExError;
 use relm4::gtk::prelude::*;
 use relm4::gtk;
 
@@ -105,9 +106,27 @@ fn search(input: String) -> Result {
 }
 
 fn mathematical(input: String) -> Result {
-    let result = exmex::eval_str::<f64>(&input).unwrap();
+    if input.is_empty() {
+        return Result {
+            action: None,
+            data: input,
+            components: Vec::new(),
+        }
+    }
+    let result = exmex::eval_str::<f64>(&input);
+    match result {
+        Ok(result) => {
+            return mathematical_result(input, result);
+        },
+        Err(e) => {
+            return mathematical_error(input, e);
+        },
+    }
+}
+
+fn mathematical_result(input: String, result: f64) -> Result {
     let mut components: Vec<gtk::Box> = Vec::new();
-    let title = get_section_title(format!("({}) evaluation", input.clone()));
+    let title = get_section_title(format!("({}) evaluation", input.clone().trim_start()));
     let content = gtk::Label::builder()
         .name("Content")
         .css_name("Content")
@@ -115,6 +134,34 @@ fn mathematical(input: String) -> Result {
         .hexpand(true)
         .halign(gtk::Align::Start)
         .label(result.to_string())     
+        .build();
+
+    let box_content = gtk::Box::builder()
+        .name("BoxContent")
+        .css_name("BoxContent")
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    box_content.append(&title);
+    box_content.append(&content);
+    components.push(box_content);
+
+    Result {
+        action: None, 
+        data: input,
+        components,
+    }
+}
+
+fn mathematical_error(input: String, err: ExError) -> Result {
+    let mut components: Vec<gtk::Box> = Vec::new();
+    let title = get_section_title(format!("({}) evaluation", input.clone().trim_start()));
+    let content = gtk::Label::builder()
+        .name("Content")
+        .css_name("Content")
+        .css_classes(vec!["matherror"])
+        .hexpand(true)
+        .halign(gtk::Align::Start)
+        .label(format!("Error: {}", err))     
         .build();
 
     let box_content = gtk::Box::builder()

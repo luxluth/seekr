@@ -41,3 +41,8 @@
     font-weight: 900;
     color: #d5c4a1;
 }
+
+#Content.matherror {
+    font-weight: 900;
+    color: #cc241d;
+}
