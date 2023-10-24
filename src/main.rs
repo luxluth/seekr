@@ -1,5 +1,8 @@
 mod exec;
 mod utils;
+
+use exec::Action;
+
 use gtk::prelude::*;
 use relm4::{prelude::*, RelmIterChildrenExt};
 use std::path::PathBuf;
@@ -21,11 +24,13 @@ fn get_file_content(path: &PathBuf) -> String {
 struct App {
     input: String,
     dynamic_box: Option<gtk::Box>,
+    action: Option<Action>
 }
 
 #[derive(Debug)]
 enum Msg {
     SetInput(String),
+    Enter,
 }
 
 fn load_css() {
@@ -79,11 +84,15 @@ impl SimpleComponent for App {
                     set_hexpand: true,
                     set_widget_name: "EntryInput",
                     set_placeholder_text: Some("Start typing..."),
-                    // set_primary_icon_name: Some("loupe"),
+                    set_primary_icon_name: Some("loupe"),
                     set_enable_emoji_completion: true,
                     set_text: &model.input,
                     connect_changed[sender] => move |entry| {
                         sender.input(Msg::SetInput(entry.text().to_string()));
+                    },
+
+                    connect_activate[sender] => move |_| {
+                        sender.input(Msg::Enter);
                     },
                 },
 
@@ -111,7 +120,7 @@ impl SimpleComponent for App {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = App { input, dynamic_box: None };
+        let model = App { input, dynamic_box: None, action: None };
         let widgets = view_output!();
         let mut component_parts = ComponentParts { model, widgets };
 
@@ -126,7 +135,7 @@ impl SimpleComponent for App {
             Msg::SetInput(input) => {
                 self.input = input;
                 let res = exec::exec(self.input.clone());
-                if res.components.len() == 0 {
+                if res.components.len() == 0 && res.action.is_none() {
                     self.dynamic_box.as_ref().unwrap().iter_children().for_each(|child| {
                         self.dynamic_box.as_ref().unwrap().remove(&child);
                     });
@@ -137,6 +146,38 @@ impl SimpleComponent for App {
                     for component in res.components {
                         self.dynamic_box.as_ref().unwrap().append(&component);
                     }
+                    
+                    match res.action {
+                        Some(a) => {
+                            self.action = Some(a);
+                        },
+                        None => {
+                            self.action = None;
+                        },
+                    }
+                }
+            },
+
+            Msg::Enter => {
+                match &self.action {
+                    Some(a) => {
+                        match a {
+                            Action::Exit => {
+                                relm4::main_application().quit();
+                            },
+                            Action::Open(something) => {
+                                println!("Open {:?}!", something);
+                                match open::that(something.trim_start()) {
+                                    Ok(_) => {
+                                        relm4::main_application().quit();
+                                    },
+                                    Err(_) => {},
+                                };
+                            }
+                        
+                        }
+                    },
+                    None => return, 
                 }
             }
         }
