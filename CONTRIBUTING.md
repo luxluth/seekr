@@ -20,6 +20,18 @@ Now that you're set up with the tools:
 3) Create a pull request
 4) Wait for reviews, if the changes are merged, 🎉 🎉 🎉 Congrats, you've just made a contrinutions to this ***fabulous*** project.
 
+> Some resources:
+>
+> The gtk official docs: <https://docs.gtk.org/gtk4>
+> 
+> The gtk-rs book: <https://gtk-rs.org/gtk4-rs/stable/latest/book>
+>
+> The gtk-rs docs: <https://gtk-rs.org/gtk4-rs/stable/latest/docs>
+>
+> The relm4 book: <https://relm4.org/book/stable>
+>
+> The relm4 docs: <https://docs.rs/relm4/latest/relm4>
+
 ---
 
 Thanks !
