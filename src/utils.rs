@@ -1,9 +1,9 @@
-use copypasta::{ClipboardContext, ClipboardProvider};
-use time::OffsetDateTime;
-use dbus::blocking::Connection;
-use dbus::arg::{Variant, PropMap};
-use std::time::Duration;
 use crate::config::APP_ID;
+use copypasta::{ClipboardContext, ClipboardProvider};
+use dbus::arg::{PropMap, Variant};
+use dbus::blocking::Connection;
+use std::time::Duration;
+use time::OffsetDateTime;
 
 pub fn systemtime_strftime(system_time: std::time::SystemTime) -> String {
     let offset_date_time = OffsetDateTime::from(system_time);
@@ -59,7 +59,6 @@ pub fn app_is_running() -> bool {
     }
 }
 
-
 pub fn send_represent_event() {
     let c = Connection::new_session();
     match c {
@@ -70,7 +69,7 @@ pub fn send_represent_event() {
                 "/dev/luxluth/fsearch/window/1",
                 Duration::from_millis(5000),
             );
-            // https://github.com/diwic/dbus-rs/blob/master/dbus/examples/argument_guide.md 
+            // https://github.com/diwic/dbus-rs/blob/master/dbus/examples/argument_guide.md
             // https://wiki.gnome.org/Projects/GLib/GApplication/DBusAPI#Methods-2
             // argument (sava{sv})
             // The action is named by the first parameter (s).
