@@ -1,30 +1,35 @@
+mod config;
 mod exec;
 mod utils;
 
+use config::APP_ID;
 use exec::Action;
 
-use gtk::prelude::*;
-use relm4::{prelude::*, RelmIterChildrenExt};
-use std::path::PathBuf;
-use std::env;
+use crate::glib::clone;
+use crate::gtk::glib;
 
+use gtk::prelude::*;
+use relm4::gtk::gio::SimpleAction;
+use relm4::{prelude::*, RelmIterChildrenExt};
+use std::env;
+use std::path::PathBuf;
 
 fn get_file_content(path: &PathBuf) -> String {
     let content = std::fs::read_to_string(path);
     match content {
         Ok(c) => {
             return c;
-        },
+        }
         Err(_) => {
             return String::new();
-        },
+        }
     }
 }
 
 struct App {
     input: String,
     dynamic_box: Option<gtk::Box>,
-    action: Option<Action>
+    action: Option<Action>,
 }
 
 #[derive(Debug)]
@@ -39,22 +44,21 @@ fn load_css() {
             let css_path = PathBuf::from(v).join("fsearch").join("style.css");
             let css_content = get_file_content(&css_path);
             relm4::set_global_css(css_content.as_str());
-
-        },
-        Err(_) => {
-            match env::var("HOME") {
-                Ok(v) => {
-                    let css_path = PathBuf::from(v).join(".config").join("fsearch").join("style.css");
-                    let css_content = get_file_content(&css_path);
-                    relm4::set_global_css(css_content.as_str());
-                },
-                Err(_) => {
-                    println!("Could not find config file.");
-                },
+        }
+        Err(_) => match env::var("HOME") {
+            Ok(v) => {
+                let css_path = PathBuf::from(v)
+                    .join(".config")
+                    .join("fsearch")
+                    .join("style.css");
+                let css_content = get_file_content(&css_path);
+                relm4::set_global_css(css_content.as_str());
+            }
+            Err(_) => {
+                println!("Could not find config file.");
             }
         },
     }
-
 }
 
 #[relm4::component]
@@ -62,7 +66,7 @@ impl SimpleComponent for App {
     type Init = String;
     type Input = Msg;
     type Output = ();
-    
+
     view! {
 
         gtk::ApplicationWindow {
@@ -70,11 +74,12 @@ impl SimpleComponent for App {
             set_default_size: (600, 50),
             set_decorated: false,
             set_resizable: false,
-            set_css_classes: &["application"], 
+            set_css_classes: &["application"],
+            set_hide_on_close: true,
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
-                set_hexpand: true, 
+                set_hexpand: true,
                 set_focusable: false,
                 set_widget_name: "EntryBox",
 
@@ -120,8 +125,20 @@ impl SimpleComponent for App {
         root: &Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = App { input, dynamic_box: None, action: None };
+        let model = App {
+            input,
+            dynamic_box: None,
+            action: None,
+        };
         let widgets = view_output!();
+
+        let represent_action = SimpleAction::new("represent", None);
+        represent_action.connect_activate(clone!(@weak root => move |_, _| {
+            root.present();
+        }));
+
+        root.add_action(&represent_action);
+
         let mut component_parts = ComponentParts { model, widgets };
 
         let dynamic_box = component_parts.widgets.dynamic_box.clone();
@@ -136,59 +153,68 @@ impl SimpleComponent for App {
                 self.input = input;
                 let res = exec::exec(self.input.clone());
                 if res.components.len() == 0 && res.action.is_none() {
-                    self.dynamic_box.as_ref().unwrap().iter_children().for_each(|child| {
-                        self.dynamic_box.as_ref().unwrap().remove(&child);
-                    });
+                    self.dynamic_box
+                        .as_ref()
+                        .unwrap()
+                        .iter_children()
+                        .for_each(|child| {
+                            self.dynamic_box.as_ref().unwrap().remove(&child);
+                        });
                 } else {
-                    self.dynamic_box.as_ref().unwrap().iter_children().for_each(|child| {
-                        self.dynamic_box.as_ref().unwrap().remove(&child);
-                    });
+                    self.dynamic_box
+                        .as_ref()
+                        .unwrap()
+                        .iter_children()
+                        .for_each(|child| {
+                            self.dynamic_box.as_ref().unwrap().remove(&child);
+                        });
                     for component in res.components {
                         self.dynamic_box.as_ref().unwrap().append(&component);
                     }
-                    
+
                     match res.action {
                         Some(a) => {
                             self.action = Some(a);
-                        },
+                        }
                         None => {
                             self.action = None;
-                        },
+                        }
                     }
                 }
-            },
-
-            Msg::Enter => {
-                match &self.action {
-                    Some(a) => {
-                        match a {
-                            Action::Exit => {
-                                relm4::main_application().quit();
-                            },
-                            Action::Open(something) => {
-                                println!("Open {:?}!", something);
-                                match open::that(something.trim_start()) {
-                                    Ok(_) => {
-                                        relm4::main_application().quit();
-                                    },
-                                    Err(_) => {},
-                                };
-                            }
-                        
-                        }
-                    },
-                    None => return, 
-                }
             }
-        }
-    } 
 
+            Msg::Enter => match &self.action {
+                Some(a) => match a {
+                    Action::Exit => {
+                        relm4::main_application().quit();
+                    }
+                    Action::Open(something) => {
+                        println!("Open {:?}!", something);
+                        match open::that(something.trim_start()) {
+                            Ok(_) => {
+                                relm4::main_application().quit();
+                            }
+                            Err(_) => {}
+                        };
+                    }
+                    Action::Copy(something) => {
+                        println!("Copy {:?}!", something);
+                        utils::copy_to_clipboard(something);
+                    }
+                },
+                None => return,
+            },
+        }
+    }
 }
 
 fn main() {
-    let app = RelmApp::new("app.luxluth.fsearch");
+    if utils::app_is_running() {
+        utils::send_represent_event();
+        return;
+    }
+    let app = RelmApp::new(APP_ID);
     relm4_icons::initialize_icons();
     load_css();
     app.run::<App>(String::new());
 }
-

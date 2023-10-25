@@ -7,7 +7,9 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.4.6", features = ["derive"] }
-exmex = "0.17.5"
+copypasta = "0.10.0"
+dbus = "0.9.7"
+exmex = "0.18.0"
 open = "5.0.0"
 relm4 = "0.6.2"
 relm4-components = "0.6.2"
