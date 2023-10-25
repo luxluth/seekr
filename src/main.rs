@@ -1,9 +1,13 @@
 mod config;
 mod exec;
 mod utils;
+mod args;
 
 use config::APP_ID;
 use exec::Action;
+
+use args::{FsearchArgs, Entity};
+use clap::Parser;
 
 use crate::glib::clone;
 use crate::gtk::glib;
@@ -12,7 +16,7 @@ use gtk::prelude::*;
 use relm4::gtk::gio::SimpleAction;
 use relm4::{prelude::*, RelmIterChildrenExt};
 use std::env;
-use std::path::PathBuf;
+use std::{path::PathBuf, process::exit};
 
 fn get_file_content(path: &PathBuf) -> String {
     let content = std::fs::read_to_string(path);
@@ -71,7 +75,7 @@ impl SimpleComponent for App {
 
         gtk::ApplicationWindow {
             set_title: Some("fsearch"),
-            set_default_size: (600, 50),
+            set_default_size: (600, -1),
             set_decorated: false,
             set_resizable: false,
             set_css_classes: &["application"],
@@ -134,6 +138,7 @@ impl SimpleComponent for App {
 
         let represent_action = SimpleAction::new("represent", None);
         represent_action.connect_activate(clone!(@weak root => move |_, _| {
+            load_css();
             root.present();
         }));
 
@@ -209,6 +214,39 @@ impl SimpleComponent for App {
 }
 
 fn main() {
+    let args = FsearchArgs::parse();
+    match args.entity {
+        Some(Entity::Deamon) => {
+            println!("Deamon");
+            return;
+        }
+        Some(Entity::Status) => {
+            println!("Deamon Status");
+            return;
+        }
+        Some(Entity::Stop) => {
+            println!("Deamon Stop");
+            return;
+        }
+        Some(Entity::Config(config)) => {
+            match config {
+                args::ConfigArgs { config, css } => {
+                    let at_least_one = config.is_some() || css.is_some();
+                    if config.is_some() {
+                        println!("Config {:?}", config.unwrap());
+                    }
+                    if css.is_some() {
+                        println!("Css {:?}", css.unwrap());
+                    }
+                    if !at_least_one {
+                        println!("No config file or css file specified.");
+                        exit(1);
+                    }
+                }
+            }
+        }
+        None => {}
+    }
     if utils::app_is_running() {
         utils::send_represent_event();
         return;
