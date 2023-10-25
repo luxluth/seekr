@@ -16,16 +16,16 @@ pub struct FsearchArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Entity {
-    /// Start the fsearch deamon
-    Deamon,
+    /// Start the fsearch daemon
+    Daemon,
 
-    /// Get deamon status 
+    /// Get daemon status 
     Status,
     
-    /// Stop the fsearch Deamon
+    /// Stop the fsearch daemon
     Stop,
 
-    /// Configurate fsearch 
+    /// Apply specific configuration to fsearch 
     Config(ConfigArgs),
 }
 

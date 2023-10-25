@@ -216,16 +216,16 @@ impl SimpleComponent for App {
 fn main() {
     let args = FsearchArgs::parse();
     match args.entity {
-        Some(Entity::Deamon) => {
-            println!("Deamon");
+        Some(Entity::Daemon) => {
+            println!("Daemon");
             return;
         }
         Some(Entity::Status) => {
-            println!("Deamon Status");
+            println!("Daemon Status");
             return;
         }
         Some(Entity::Stop) => {
-            println!("Deamon Stop");
+            println!("Daemon Stop");
             return;
         }
         Some(Entity::Config(config)) => {
