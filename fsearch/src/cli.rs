@@ -1,31 +1,25 @@
+use clap::{Args, Parser, Subcommand};
 use clap_complete::Shell;
-use clap::{
-    Args,
-    Parser,
-    Subcommand,
-};
-
 
 #[derive(Debug, Parser)]
-#[command(name="fsearch", author, version, about)]
+#[command(name = "fsearch", author, version, about)]
 pub struct FsearchArgs {
     #[clap(subcommand)]
     pub command: Option<Command>,
 }
-
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Start the fsearch daemon
     Daemon,
 
-    /// Get daemon status 
+    /// Get daemon status
     Status,
-    
+
     /// Stop the fsearch daemon
     Stop,
 
-    /// Apply specific configuration to fsearch 
+    /// Apply specific configuration to fsearch
     Config(ConfigArgs),
 
     /// Generate command completion

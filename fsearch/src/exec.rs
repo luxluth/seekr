@@ -7,22 +7,21 @@ use relm4::gtk::prelude::*;
 use std::fs;
 use std::path::PathBuf;
 
-const INNER_COMMANDS: [&str; 6] = [
+use fsearch_core::PluginConfig;
+
+const INNER_COMMANDS: [&str; 4] = [
     "exit", // exit the program
     "open", // open a file @open <file>
     "exp",  // evaluate a mathematical expression @exp <expression>
     "help", // show help
-    "dico", // search in the dictionnary
-    "wiki", // search on wikipedia
+    // "dico", // search in the dictionnary will be a plugin
+    // "wiki", // search on wikipedia will be a plugin
 ];
 
-const HELP: &str = r#"    
-    @exit: exit the program
-    @open <file>: open a file
-    @exp <expression>: evaluate a mathematical expression
-    @help: show help
-    @dico <word>: search in the dictionnary
-    @wiki <word>: search on wikipedia
+const HELP: &str = r#"@exit: exit the program
+@open <file>: open a file
+@exp <expression>: evaluate a mathematical expression
+@help: show help
 "#;
 
 #[derive(Debug)]
@@ -40,7 +39,9 @@ pub struct Result {
     // A component is a Box containing a Label named "Title" and a Box named "Content"
 }
 
-pub fn exec(input: String) -> Result {
+type Plug = Vec<PluginConfig>;
+
+pub fn exec(input: String, plugins: &Plug) -> Result {
     if input.is_empty() {
         return Result {
             action: None,
@@ -48,12 +49,13 @@ pub fn exec(input: String) -> Result {
             components: Vec::new(),
         };
     }
+
     let input_type = detect_input_type(&input);
     match input_type {
         InputType::Search => search(input),
         InputType::Mathematical => mathematical(input),
         InputType::Url => url(input),
-        InputType::Command(cmd) => command(cmd.as_str(), input),
+        InputType::Command(cmd) => command(cmd.as_str(), input, plugins),
         InputType::File(file) => f(file),
     }
 }
@@ -66,6 +68,17 @@ fn get_section_title(label: String) -> gtk::Label {
         .halign(gtk::Align::Start)
         .label(label)
         .build()
+}
+
+fn wrap_section(bx: gtk::Box) -> gtk::Box {
+    let section = gtk::Box::builder()
+        .name("Section")
+        .css_name("Section")
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    section.append(&bx);
+    section
 }
 
 fn search(input: String) -> Result {
@@ -88,7 +101,7 @@ fn search(input: String) -> Result {
         .build();
     box_content.append(&title);
     box_content.append(&content);
-    components.push(box_content);
+    components.push(wrap_section(box_content));
 
     Result {
         action: None,
@@ -139,7 +152,7 @@ fn mathematical_result(input: String, result: f64) -> Result {
         .build();
     box_content.append(&title);
     box_content.append(&content);
-    components.push(box_content);
+    components.push(wrap_section(box_content));
 
     Result {
         action: Some(Action::Copy(result.to_string())),
@@ -158,7 +171,7 @@ fn mathematical_error(input: String, err: ExError) -> Result {
         .name("Content")
         .css_name("Content")
         .wrap(true)
-        .css_classes(vec!["matherror"])
+        .css_classes(vec!["error"])
         .hexpand(true)
         .halign(gtk::Align::Start)
         .label(format!("{}", err))
@@ -171,7 +184,7 @@ fn mathematical_error(input: String, err: ExError) -> Result {
         .build();
     box_content.append(&title);
     box_content.append(&content);
-    components.push(box_content);
+    components.push(wrap_section(box_content));
 
     Result {
         action: None,
@@ -202,7 +215,7 @@ fn url(input: String) -> Result {
     box_content.append(&title);
     box_content.append(&content);
 
-    components.push(box_content);
+    components.push(wrap_section(box_content));
 
     Result {
         action: Some(Action::Open(input.clone())),
@@ -211,7 +224,7 @@ fn url(input: String) -> Result {
     }
 }
 
-fn command(cmd: &str, input: String) -> Result {
+fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
     match cmd {
         "exit" => Result {
             action: Some(Action::Exit),
@@ -242,7 +255,7 @@ fn command(cmd: &str, input: String) -> Result {
             box_content.append(&title);
             box_content.append(&content);
 
-            components.push(box_content);
+            components.push(wrap_section(box_content));
 
             Result {
                 action: Some(Action::Open(file.clone())),
@@ -263,19 +276,45 @@ fn command(cmd: &str, input: String) -> Result {
                 .css_classes(vec!["help"])
                 .hexpand(true)
                 .halign(gtk::Align::Start)
-                .label(HELP)
+                .label(format!("{}", HELP))
                 .build();
 
-            let box_content = gtk::Box::builder()
+            let plugin_title = get_section_title("Plugins".to_string());
+            let mut plugin_content = String::new();
+            for plugin in plugins {
+                plugin_content.push_str(format!("@{} <query>: {}\n", plugin.name, plugin.description).as_str());
+            }
+
+            let plugin_content = gtk::Label::builder()
+                .name("Content")
+                .css_name("Content")
+                .wrap(true)
+                .css_classes(vec!["help"])
+                .hexpand(true)
+                .halign(gtk::Align::Start)
+                .label(plugin_content)
+                .build();
+
+            let help_box_content = gtk::Box::builder()
                 .name("BoxContent")
                 .css_name("BoxContent")
                 .orientation(gtk::Orientation::Vertical)
                 .build();
 
-            box_content.append(&title);
-            box_content.append(&content);
+            let plugin_box_content = gtk::Box::builder()
+                .name("BoxContent")
+                .css_name("BoxContent")
+                .orientation(gtk::Orientation::Vertical)
+                .build();
 
-            components.push(box_content);
+            help_box_content.append(&title);
+            help_box_content.append(&content);
+
+            plugin_box_content.append(&plugin_title);
+            plugin_box_content.append(&plugin_content);
+
+            components.push(wrap_section(help_box_content));
+            components.push(wrap_section(plugin_box_content));
 
             Result {
                 action: None,
@@ -339,6 +378,7 @@ fn f(file: String) -> Result {
             .hexpand(true)
             .halign(gtk::Align::Start)
             .label(format!("{} does not exist.", file))
+            .css_classes(vec!["error"])
             .build();
 
         let box_content = gtk::Box::builder()
@@ -350,7 +390,7 @@ fn f(file: String) -> Result {
         box_content.append(&title);
         box_content.append(&content);
 
-        components.push(box_content);
+        components.push(wrap_section(box_content));
 
         return Result {
             action: None,
@@ -412,7 +452,7 @@ fn f(file: String) -> Result {
                 box_content.append(&title);
                 box_content.append(&box_dir);
 
-                components.push(box_content);
+                components.push(wrap_section(box_content));
 
                 return Result {
                     action: None,
@@ -479,7 +519,7 @@ fn f(file: String) -> Result {
                 box_content.append(&title);
                 box_content.append(&box_file);
 
-                components.push(box_content);
+                components.push(wrap_section(box_content));
 
                 return Result {
                     action: None,
@@ -546,7 +586,7 @@ fn f(file: String) -> Result {
                 box_content.append(&title);
                 box_content.append(&box_symlink);
 
-                components.push(box_content);
+                components.push(wrap_section(box_content));
 
                 return Result {
                     action: None,
@@ -579,6 +619,8 @@ fn f(file: String) -> Result {
 
             box_content.append(&title);
             box_content.append(&content);
+
+            components.push(wrap_section(box_content));
 
             return Result {
                 action: None,

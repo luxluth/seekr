@@ -1,14 +1,15 @@
-mod config;
-mod exec;
-mod utils;
 mod cli;
 mod completion;
+mod config;
+mod exec;
+// mod plugin;
+mod utils;
 
 use config::APP_ID;
 use exec::Action;
 
-use cli::{FsearchArgs, Command};
 use clap::Parser;
+use cli::{Command, FsearchArgs};
 
 use crate::glib::clone;
 use crate::gtk::glib;
@@ -17,24 +18,15 @@ use gtk::prelude::*;
 use relm4::gtk::gio::SimpleAction;
 use relm4::{prelude::*, RelmIterChildrenExt};
 
-use std::env;
-use std::{path::PathBuf, process::exit};
+use std::process::exit;
 
-fn get_file_content(path: &PathBuf) -> String {
-    let content = std::fs::read_to_string(path);
-    match content {
-        Ok(c) => {
-            return c;
-        }
-        Err(_) => {
-            return String::new();
-        }
-    }
-}
+use fsearch_core::{get_css, get_cfg, get_plugins, Config, PluginConfig};
 
 struct App {
     input: String,
-    dynamic_box: Option<gtk::Box>,
+    config: Option<Config>,
+    plugins: Vec<PluginConfig>,
+    dynamic_box: Option<gtk::ListBox>,
     action: Option<Action>,
 }
 
@@ -45,26 +37,7 @@ enum Msg {
 }
 
 fn load_css() {
-    match env::var("XDG_CONFIG_HOME") {
-        Ok(v) => {
-            let css_path = PathBuf::from(v).join("fsearch").join("style.css");
-            let css_content = get_file_content(&css_path);
-            relm4::set_global_css(css_content.as_str());
-        }
-        Err(_) => match env::var("HOME") {
-            Ok(v) => {
-                let css_path = PathBuf::from(v)
-                    .join(".config")
-                    .join("fsearch")
-                    .join("style.css");
-                let css_content = get_file_content(&css_path);
-                relm4::set_global_css(css_content.as_str());
-            }
-            Err(_) => {
-                println!("Could not find config file.");
-            }
-        },
-    }
+    relm4::set_global_css(get_css().as_str());
 }
 
 #[relm4::component]
@@ -94,7 +67,7 @@ impl SimpleComponent for App {
                     set_activates_default: true,
                     set_hexpand: true,
                     set_widget_name: "EntryInput",
-                    set_placeholder_text: Some("Start typing..."),
+                    set_placeholder_text: Some("Search"),
                     // set_primary_icon_name: Some("loupe"),
                     set_enable_emoji_completion: true,
                     set_text: &model.input,
@@ -106,7 +79,8 @@ impl SimpleComponent for App {
                         sender.input(Msg::Enter);
                     },
                 },
-
+                
+                #[name="tip"]
                 gtk::Label {
                     set_widget_name: "Tip",
                     set_hexpand: true,
@@ -115,8 +89,7 @@ impl SimpleComponent for App {
                 },
 
                 #[name="dynamic_box"]
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
+                gtk::ListBox {
                     set_hexpand: true,
                     set_focusable: false,
                     set_widget_name: "DynamicBox",
@@ -133,9 +106,12 @@ impl SimpleComponent for App {
     ) -> ComponentParts<Self> {
         let model = App {
             input,
+            config: get_cfg(),
+            plugins: get_plugins(),
             dynamic_box: None,
             action: None,
         };
+
         let widgets = view_output!();
 
         let represent_action = SimpleAction::new("represent", None);
@@ -145,6 +121,27 @@ impl SimpleComponent for App {
         }));
 
         root.add_action(&represent_action);
+
+        if let Some(cfg) = &model.config {
+            println!("{:?}", cfg);
+            if let Some(look) = &cfg.look {
+                if let Some(disable_tip) = &look.disable_tip {
+                    if *disable_tip {
+                        widgets.tip.hide();
+                    }
+                }
+
+                if let Some(initial_width) = &look.initial_width {
+                    if *initial_width > 100 {
+                        root.set_default_size((*initial_width) as i32, -1);
+                    }
+                }
+
+                if let Some(input_placeholder) = &look.input_placeholder {
+                    widgets.entry.set_placeholder_text(Some(input_placeholder));
+                }
+            }
+        }
 
         let mut component_parts = ComponentParts { model, widgets };
 
@@ -158,7 +155,7 @@ impl SimpleComponent for App {
         match msg {
             Msg::SetInput(input) => {
                 self.input = input;
-                let res = exec::exec(self.input.clone());
+                let res = exec::exec(self.input.clone(), &self.plugins);
                 if res.components.len() == 0 && res.action.is_none() {
                     self.dynamic_box
                         .as_ref()
@@ -215,8 +212,6 @@ impl SimpleComponent for App {
     }
 }
 
-
-
 fn main() {
     let matches = FsearchArgs::parse();
     match matches.command {
@@ -232,27 +227,25 @@ fn main() {
             println!("Daemon Stop");
             return;
         }
-        Some(Command::Config(config)) => {
-            match config {
-                cli::ConfigArgs { config, css } => {
-                    let at_least_one = config.is_some() || css.is_some();
-                    if config.is_some() {
-                        println!("Config {:?}", config.unwrap());
-                    }
-                    if css.is_some() {
-                        println!("Css {:?}", css.unwrap());
-                    }
-                    if !at_least_one {
-                        println!("No config file or css file specified.");
-                        exit(1);
-                    }
+        Some(Command::Config(config)) => match config {
+            cli::ConfigArgs { config, css } => {
+                let at_least_one = config.is_some() || css.is_some();
+                if config.is_some() {
+                    println!("Config {:?}", config.unwrap());
+                }
+                if css.is_some() {
+                    println!("Css {:?}", css.unwrap());
+                }
+                if !at_least_one {
+                    println!("No config file or css file specified.");
+                    exit(1);
                 }
             }
-        }
+        },
         Some(Command::Completion(arg)) => {
-           let shell = arg.shell;
-           completion::generate_completion(shell);
-           return;
+            let shell = arg.shell;
+            completion::generate_completion(shell);
+            return;
         }
         None => {}
     }

@@ -511,6 +511,7 @@ dependencies = [
  "copypasta",
  "dbus",
  "exmex",
+ "fsearch-core",
  "open",
  "relm4",
  "relm4-components",
@@ -522,10 +523,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "fsearch-core"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "fsearch-daemon"
 version = "0.0.1"
 dependencies = [
  "axum",
+ "fsearch-core",
 ]
 
 [[package]]

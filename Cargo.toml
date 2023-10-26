@@ -3,6 +3,7 @@
 members = [
     "fsearch",
     "fsearch-daemon",
+    "fsearch-core",
 ]
 
 resolver = "2"

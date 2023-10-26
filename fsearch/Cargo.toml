@@ -8,6 +8,7 @@ description = " A spotlight like search util for linux"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+fsearch-core = { path = "../fsearch-core" }
 clap = { version = "4.4.6", features = ["derive"] }
 clap_complete = "4.4.4"
 copypasta = "0.10.0"
