@@ -1,3 +1,4 @@
+use clap_complete::Shell;
 use clap::{
     Args,
     Parser,
@@ -6,16 +7,15 @@ use clap::{
 
 
 #[derive(Debug, Parser)]
-#[clap(name = "fsearch", version, author)]
+#[command(name="fsearch", author, version, about)]
 pub struct FsearchArgs {
     #[clap(subcommand)]
-    pub entity: Option<Entity>,
-
+    pub command: Option<Command>,
 }
 
 
 #[derive(Debug, Subcommand)]
-pub enum Entity {
+pub enum Command {
     /// Start the fsearch daemon
     Daemon,
 
@@ -27,6 +27,9 @@ pub enum Entity {
 
     /// Apply specific configuration to fsearch 
     Config(ConfigArgs),
+
+    /// Generate command completion
+    Completion(CompletionArgs),
 }
 
 #[derive(Debug, Args)]
@@ -38,4 +41,11 @@ pub struct ConfigArgs {
     /// The path of the css file
     #[clap(short, long, value_name = "FILE_PATH")]
     pub css: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct CompletionArgs {
+    /// The shell to generate the completion for
+    #[clap(short, long, value_name = "SHELL")]
+    pub shell: Shell,
 }

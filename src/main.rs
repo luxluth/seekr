@@ -1,12 +1,13 @@
 mod config;
 mod exec;
 mod utils;
-mod args;
+mod cli;
+mod completion;
 
 use config::APP_ID;
 use exec::Action;
 
-use args::{FsearchArgs, Entity};
+use cli::{FsearchArgs, Command};
 use clap::Parser;
 
 use crate::glib::clone;
@@ -15,6 +16,7 @@ use crate::gtk::glib;
 use gtk::prelude::*;
 use relm4::gtk::gio::SimpleAction;
 use relm4::{prelude::*, RelmIterChildrenExt};
+
 use std::env;
 use std::{path::PathBuf, process::exit};
 
@@ -213,24 +215,26 @@ impl SimpleComponent for App {
     }
 }
 
+
+
 fn main() {
-    let args = FsearchArgs::parse();
-    match args.entity {
-        Some(Entity::Daemon) => {
+    let matches = FsearchArgs::parse();
+    match matches.command {
+        Some(Command::Daemon) => {
             println!("Daemon");
             return;
         }
-        Some(Entity::Status) => {
+        Some(Command::Status) => {
             println!("Daemon Status");
             return;
         }
-        Some(Entity::Stop) => {
+        Some(Command::Stop) => {
             println!("Daemon Stop");
             return;
         }
-        Some(Entity::Config(config)) => {
+        Some(Command::Config(config)) => {
             match config {
-                args::ConfigArgs { config, css } => {
+                cli::ConfigArgs { config, css } => {
                     let at_least_one = config.is_some() || css.is_some();
                     if config.is_some() {
                         println!("Config {:?}", config.unwrap());
@@ -244,6 +248,11 @@ fn main() {
                     }
                 }
             }
+        }
+        Some(Command::Completion(arg)) => {
+           let shell = arg.shell;
+           completion::generate_completion(shell);
+           return;
         }
         None => {}
     }
