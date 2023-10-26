@@ -42,7 +42,7 @@ pub struct Result {
 type Plug = Vec<PluginConfig>;
 
 pub fn exec(input: String, plugins: &Plug) -> Result {
-    if input.is_empty() {
+    if input.is_empty() || input.len() > 1000 { // TOINVEST: 1000 chars should be enough for a search query -- or maybe not
         return Result {
             action: None,
             data: input,
