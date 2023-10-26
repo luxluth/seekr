@@ -28,11 +28,24 @@
     font-style: italic;
 }
 
+#DynamicBox {
+    background: transparent;
+    color: #d5c4a1;
+    font-size: 1.2em;
+    font-weight: 400;
+}
+
+#Section {
+    border-bottom: 1px solid #504945;
+    margin-bottom: 1em;
+    padding-bottom: .5em;
+}
+
 #SectionTitle {
     color: #d5c4a1;
+    margin-bottom: .2em;
     font-size: 1.1em;
     font-weight: 900;
-    margin-top: .5em;
 }
 
 #Content.mathematical {
@@ -42,7 +55,7 @@
     color: #d5c4a1;
 }
 
-#Content.matherror {
+.error {
     font-weight: 900;
     color: #cc241d;
 }
