@@ -2,7 +2,6 @@
 
 members = [
     "fsearch",
-    "fsearch-daemon",
     "fsearch-core",
 ]
 
