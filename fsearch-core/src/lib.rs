@@ -219,12 +219,24 @@ pub struct PluginConfig {
     pub dev: Option<bool>,
 }
 
+/// Plugin action type
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PluginActionType {
+    Open,
+    RunCmd,
+    RunScript,
+    Exit,
+    Launch,
+}
+
+/// Plugin action
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginAction {
-    pub cmd: String,
+    pub action: PluginActionType,
     pub close_after_run: Option<bool>,
 }
 
+/// GtkComponent type
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GtkComponentType {
     Box,
@@ -232,6 +244,7 @@ pub enum GtkComponentType {
     Label,
 }
 
+/// GtkComponent align
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Align {
     Start,
@@ -241,6 +254,7 @@ pub enum Align {
     Baseline,
 }
 
+/// GtkComponent
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GtkComponent {
     pub component_type: GtkComponentType,
@@ -338,79 +352,114 @@ pub fn new_plugin_response(
 
 
 pub fn new_plugin_action(
-    cmd: String,
+    action: PluginActionType,
     close_after_run: Option<bool>,
 ) -> PluginAction {
     PluginAction {
-        cmd,
+        action,
         close_after_run,
     }
 }
 
-/// GtkComponent builder
+/// GtkComponent builder 
+/// Example:
+/// ```rust 
+/// let gtk_component = GtkComponentBuilder::new(GtkComponentType::Box)
+///    .add_class("my-class".to_string())
+///    .hexpand(true)
+///    .halign(Align::Center)
+///    .text("My text".to_string())
+///    .add_child(GtkComponentBuilder::new(GtkComponentType::Label)
+///    .add_class("my-child-class".to_string())
+///    .hexpand(true)
+///    .halign(Align::Center)
+///    .text("My child text".to_string())
+///    .build())
+///    .build();
+/// ```
 pub struct GtkComponentBuilder {
     component_type: GtkComponentType,
     id: String,
     classes: Vec<String>,
-    hexpand: Option<bool>,
-    halign: Option<Align>,
-    text: Option<String>,
+    hexpand: bool,
+    halign: Align,
+    text: String,
     children: Vec<GtkComponent>,
     on_click: Option<PluginAction>,
 }
 
 impl GtkComponentBuilder {
-    pub fn new(component_type: GtkComponentType, id: String) -> Self {
+    /// Create a new GtkComponentBuilder
+    pub fn new(ctype: GtkComponentType) -> Self {
         Self {
-            component_type,
-            id,
+            component_type: ctype,
+            id: String::new(),
             classes: Vec::new(),
-            hexpand: None,
-            halign: None,
-            text: None,
+            hexpand: false,
+            halign: Align::Start,
+            text: String::new(),
             children: Vec::new(),
             on_click: None,
         }
     }
 
+    /// Set the id of the component
+    pub fn id(mut self, id: String) -> Self {
+        self.id = id;
+        self
+    }
+
+    /// Add a class to the component
     pub fn add_class(mut self, class: String) -> Self {
         self.classes.push(class);
         self
     }
-
-    pub fn set_hexpand(mut self, hexpand: bool) -> Self {
-        self.hexpand = Some(hexpand);
+    
+    /// Set the hexpand property of the component
+    pub fn hexpand(mut self, hexpand: bool) -> Self {
+        self.hexpand = hexpand;
+        self
+    }
+    
+    /// Set the halign property of the component
+    pub fn halign(mut self, halign: Align) -> Self {
+        self.halign = halign;
+        self
+    }
+    
+    /// Set the text property of the component
+    pub fn text(mut self, text: String) -> Self {
+        self.text = text;
         self
     }
 
-    pub fn set_halign(mut self, halign: Align) -> Self {
-        self.halign = Some(halign);
-        self
-    }
-
-    pub fn set_text(mut self, text: String) -> Self {
-        self.text = Some(text);
-        self
-    }
-
+    /// Add a child to the component
     pub fn add_child(mut self, child: GtkComponent) -> Self {
         self.children.push(child);
         self
     }
 
-    pub fn set_on_click(mut self, on_click: PluginAction) -> Self {
+    /// Add children to the component
+    pub fn add_children(mut self, children: Vec<GtkComponent>) -> Self {
+        self.children.extend(children);
+        self
+    }
+
+    /// Set the on_click property of the component
+    pub fn on_click(mut self, on_click: PluginAction) -> Self {
         self.on_click = Some(on_click);
         self
     }
 
+    /// Build the GtkComponent
     pub fn build(self) -> GtkComponent {
         GtkComponent {
             component_type: self.component_type,
             id: self.id,
             classes: self.classes,
-            hexpand: self.hexpand,
-            halign: self.halign,
-            text: self.text,
+            hexpand: Some(self.hexpand),
+            halign: Some(self.halign),
+            text: Some(self.text),
             children: Some(self.children),
             on_click: self.on_click,
         }
