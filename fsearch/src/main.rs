@@ -215,18 +215,6 @@ impl SimpleComponent for App {
 fn main() {
     let matches = FsearchArgs::parse();
     match matches.command {
-        Some(Command::Daemon) => {
-            println!("Daemon");
-            return;
-        }
-        Some(Command::Status) => {
-            println!("Daemon Status");
-            return;
-        }
-        Some(Command::Stop) => {
-            println!("Daemon Stop");
-            return;
-        }
         Some(Command::Config(config)) => match config {
             cli::ConfigArgs { config, css } => {
                 let at_least_one = config.is_some() || css.is_some();

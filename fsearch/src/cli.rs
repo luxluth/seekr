@@ -10,15 +10,6 @@ pub struct FsearchArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Start the fsearch daemon
-    Daemon,
-
-    /// Get daemon status
-    Status,
-
-    /// Stop the fsearch daemon
-    Stop,
-
     /// Apply specific configuration to fsearch
     Config(ConfigArgs),
 

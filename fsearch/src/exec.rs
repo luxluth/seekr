@@ -83,25 +83,30 @@ fn wrap_section(bx: gtk::Box) -> gtk::Box {
 
 fn search(input: String) -> Result {
     let mut components: Vec<gtk::Box> = Vec::new();
-    let title = get_section_title("Search".to_string());
-    let content = gtk::Label::builder()
-        .name("Content")
-        .css_name("Content")
+    let search_prefix = gtk::Label::builder()
+        .name("SearchPrefix")
+        .css_name("SearchPrefix")
+        .halign(gtk::Align::Start)
+        .label(format!("Searching for "))
+        .build();
+
+    let search_query = gtk::Label::builder()
+        .name("SearchQuery")
+        .css_name("SearchQuery")
         .wrap(true)
-        .css_classes(vec!["search"])
         .hexpand(true)
         .halign(gtk::Align::Start)
-        .label(format!("search {}", input))
+        .label(format!("«{}»", input))
         .build();
 
     let box_content = gtk::Box::builder()
-        .name("BoxContent")
-        .css_name("BoxContent")
+        .name("Search")
+        .css_name("Search")
         .orientation(gtk::Orientation::Vertical)
         .build();
-    box_content.append(&title);
-    box_content.append(&content);
-    components.push(wrap_section(box_content));
+    box_content.append(&search_prefix);
+    box_content.append(&search_query);
+    components.push(box_content);
 
     Result {
         action: None,
