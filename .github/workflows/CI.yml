@@ -13,8 +13,11 @@ jobs:
       image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest 
     steps:
     - uses: actions/checkout@v3
-    - name: Additional deps
-      run: sudo apt-get install -y libdbus-1-dev pkg-config
+    - uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: libdbus-1-dev pkg-config 
+        version: 1.0
+
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
