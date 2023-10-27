@@ -17,6 +17,8 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
+    - name: Additional deps
+      run: sudo apt install libdbus-1-dev pkg-config
     - name: Build
       run: cargo build
     - name: Test
