@@ -233,12 +233,24 @@ pub enum GtkComponentType {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum Align {
+    Start,
+    End,
+    Center,
+    Fill,
+    Baseline,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GtkComponent {
     pub component_type: GtkComponentType,
     pub id: String,
-    pub class: String,
+    pub hexpand: Option<bool>,
+    pub halign: Option<Align>,
+    pub classes: Vec<String>,
     pub text: Option<String>,
     pub children: Option<Vec<GtkComponent>>,
+
     /// only for buttons
     pub on_click: Option<PluginAction>,
 }
@@ -251,6 +263,159 @@ pub struct PluginResponse {
     pub set_icon: Option<String>,
 }
 
+pub fn new_label(
+    text: String, 
+    id: String, 
+    classes: Vec<String>,
+    hexpand: Option<bool>,
+    halign: Align,
+) -> GtkComponent { 
+    GtkComponent {
+        component_type: GtkComponentType::Label,
+        id,
+        classes,
+        hexpand,
+        halign: Some(halign),
+        text: Some(text),
+        children: None,
+        on_click: None,
+    }
+}
+
+pub fn new_button(
+    text: String, 
+    id: String, 
+    classes: Vec<String>,
+    hexpand: Option<bool>,
+    halign: Align,
+    on_click: PluginAction,
+    children: Option<Vec<GtkComponent>>
+) -> GtkComponent { 
+    GtkComponent {
+        component_type: GtkComponentType::Button,
+        id,
+        classes,
+        hexpand,
+        halign: Some(halign),
+        text: Some(text),
+        children,
+        on_click: Some(on_click),
+    }
+}
+
+pub fn new_box(
+    id: String, 
+    classes: Vec<String>,
+    hexpand: Option<bool>,
+    halign: Align,
+    children: Option<Vec<GtkComponent>>
+) -> GtkComponent { 
+    GtkComponent {
+        component_type: GtkComponentType::Box,
+        id,
+        classes,
+        hexpand,
+        halign: Some(halign),
+        text: None,
+        children,
+        on_click: None,
+    }
+}
+
+pub fn new_plugin_response(
+    gtk: Option<Vec<GtkComponent>>,
+    action: Option<PluginAction>,
+    error: Option<String>,
+    set_icon: Option<String>,
+) -> PluginResponse {
+    PluginResponse {
+        gtk,
+        action,
+        error,
+        set_icon,
+    }
+}
+
+
+pub fn new_plugin_action(
+    cmd: String,
+    close_after_run: Option<bool>,
+) -> PluginAction {
+    PluginAction {
+        cmd,
+        close_after_run,
+    }
+}
+
+/// GtkComponent builder
+pub struct GtkComponentBuilder {
+    component_type: GtkComponentType,
+    id: String,
+    classes: Vec<String>,
+    hexpand: Option<bool>,
+    halign: Option<Align>,
+    text: Option<String>,
+    children: Vec<GtkComponent>,
+    on_click: Option<PluginAction>,
+}
+
+impl GtkComponentBuilder {
+    pub fn new(component_type: GtkComponentType, id: String) -> Self {
+        Self {
+            component_type,
+            id,
+            classes: Vec::new(),
+            hexpand: None,
+            halign: None,
+            text: None,
+            children: Vec::new(),
+            on_click: None,
+        }
+    }
+
+    pub fn add_class(mut self, class: String) -> Self {
+        self.classes.push(class);
+        self
+    }
+
+    pub fn set_hexpand(mut self, hexpand: bool) -> Self {
+        self.hexpand = Some(hexpand);
+        self
+    }
+
+    pub fn set_halign(mut self, halign: Align) -> Self {
+        self.halign = Some(halign);
+        self
+    }
+
+    pub fn set_text(mut self, text: String) -> Self {
+        self.text = Some(text);
+        self
+    }
+
+    pub fn add_child(mut self, child: GtkComponent) -> Self {
+        self.children.push(child);
+        self
+    }
+
+    pub fn set_on_click(mut self, on_click: PluginAction) -> Self {
+        self.on_click = Some(on_click);
+        self
+    }
+
+    pub fn build(self) -> GtkComponent {
+        GtkComponent {
+            component_type: self.component_type,
+            id: self.id,
+            classes: self.classes,
+            hexpand: self.hexpand,
+            halign: self.halign,
+            text: self.text,
+            children: Some(self.children),
+            on_click: self.on_click,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
