@@ -524,7 +524,7 @@ dependencies = [
 
 [[package]]
 name = "fsearch-core"
-version = "0.0.1"
+version = "0.0.3"
 dependencies = [
  "serde",
  "serde_json",
