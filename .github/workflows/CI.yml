@@ -17,8 +17,8 @@ jobs:
       with:
         profile: minimal
         toolchain: stable
-    - name: Which system ?
-      run: cat /etc/os-release
+    - name: Additional deps
+      run: sudo dnf install -y gtk4-devel dbus dbus-devel pkgconf-pkg-config
     - name: Build
       run: cargo build
     - name: Test
