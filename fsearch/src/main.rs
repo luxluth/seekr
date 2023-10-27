@@ -27,6 +27,7 @@ struct App {
     config: Option<Config>,
     plugins: Vec<PluginConfig>,
     dynamic_box: Option<gtk::ListBox>,
+    dynamic_icon: Option<gtk::Image>,
     action: Option<Action>,
 }
 
@@ -62,23 +63,44 @@ impl SimpleComponent for App {
                 set_focusable: false,
                 set_widget_name: "EntryBox",
 
-                #[name="entry"]
-                gtk::Entry {
-                    set_activates_default: true,
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
                     set_hexpand: true,
-                    set_widget_name: "EntryInput",
-                    set_placeholder_text: Some("Search"),
-                    // set_primary_icon_name: Some("loupe"),
-                    set_enable_emoji_completion: true,
-                    set_text: &model.input,
-                    connect_changed[sender] => move |entry| {
-                        sender.input(Msg::SetInput(entry.text().to_string()));
+                    set_focusable: false,
+                    set_widget_name: "EntryAndIconBox",
+                    
+                    #[name="entry"]
+                    gtk::Entry {
+                        set_activates_default: true,
+                        set_hexpand: true,
+                        set_widget_name: "EntryInput",
+                        set_placeholder_text: Some("Search"),
+                        // set_primary_icon_name: Some("loupe"),
+                        set_enable_emoji_completion: true,
+                        set_text: &model.input,
+                        connect_changed[sender] => move |entry| {
+                            sender.input(Msg::SetInput(entry.text().to_string()));
+                        },
+
+                        connect_activate[sender] => move |_| {
+                            sender.input(Msg::Enter);
+                        },
                     },
 
-                    connect_activate[sender] => move |_| {
-                        sender.input(Msg::Enter);
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_hexpand: false,
+                        set_focusable: false,
+                        set_widget_name: "EntryIconBox",
+                        
+                        #[name="dynamic_icon"]
+                        gtk::Image {
+                            set_widget_name: "EntryIcon",
+                            set_halign: gtk::Align::Center,
+                        },
                     },
                 },
+                
                 
                 #[name="tip"]
                 gtk::Label {
@@ -109,6 +131,7 @@ impl SimpleComponent for App {
             config: get_cfg(),
             plugins: get_plugins(),
             dynamic_box: None,
+            dynamic_icon: None,
             action: None,
         };
 
@@ -147,6 +170,9 @@ impl SimpleComponent for App {
 
         let dynamic_box = component_parts.widgets.dynamic_box.clone();
         component_parts.model.dynamic_box = Some(dynamic_box.clone());
+
+        let dynamic_icon = component_parts.widgets.dynamic_icon.clone();
+        component_parts.model.dynamic_icon = Some(dynamic_icon.clone());
 
         component_parts
     }

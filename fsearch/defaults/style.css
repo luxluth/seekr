@@ -28,6 +28,23 @@
     font-style: italic;
 }
 
+#Search {
+    color: #d5c4a1;
+    font-size: .8em;
+    font-weight: 400;
+}
+
+#SearchPrefix {
+    font-weight: 900;
+    font-style: italic;
+}
+
+#SearchQuery {
+    font-weight: 400;
+    font-style: italic;
+    opacity: .5;
+}
+
 #DynamicBox {
     background: transparent;
     color: #d5c4a1;

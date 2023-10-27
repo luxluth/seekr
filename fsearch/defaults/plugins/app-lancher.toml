@@ -1,0 +1,6 @@
+name = "app-launcher"
+description = "Launches applications"
+cmd = "@script:app-launcher"
+run_on_any_query = true
+priority = 3
+dev = false
