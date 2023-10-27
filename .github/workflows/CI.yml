@@ -13,15 +13,12 @@ jobs:
       image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest 
     steps:
     - uses: actions/checkout@v3
-    - uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: libdbus-1-dev pkg-config 
-        version: 1.0
-
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
         toolchain: stable
+    - name: Which system ?
+      run: cat /etc/os-release
     - name: Build
       run: cargo build
     - name: Test
