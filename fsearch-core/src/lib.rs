@@ -182,11 +182,17 @@ pub struct Network {
 /// The plugin cmd should be in the $PATH or an absolute path to a program
 /// that receives the query as an argument.
 ///
+/// Pluging scripts can live in `~/.config/fsearch/scripts/<plugin_thing>` , can be write `@script:<plugin_thing>` in the cmd field for simpler usage
+///
 /// Example:
+///  ```toml
 ///  name = "ls"
 ///  description = "List files"
-///  cmd = /some/path/myls # the command is executed with the query as an argument (ls <query>)
-///
+///  cmd = "@script:myls" # the command is executed with the query as an argument (ls <query>)
+///  run_on_any_query = false # if true, the plugin will run on any query, not just when the query starts with the plugin name
+///  priority = 0 # the priority is used to sort the plugins displayed in the UI default is 0 and max is 3
+///  dev = false # dev mode (not used yet)
+///  ```
 ///  
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginConfig {
@@ -196,11 +202,93 @@ pub struct PluginConfig {
     pub description: String,
     /// The command to execute
     pub cmd: String,
-    /// The icon to display (A path to a file)
-    pub icon: Option<String>,
+    /// Run on any query
+    pub run_on_any_query: Option<bool>,
+    /// Priority
+    /// The priority is used to sort the plugins displayed in the UI default is 0 and max is 3
+    pub priority: Option<i32>,
+    /// dev mode (not used yet)
+    /// This mode will show debug info in the UI
+    pub dev: Option<bool>,
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-// }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PluginAction {
+    pub cmd: String,
+    pub close_after_run: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum GtkComponentType {
+    Box,
+    Button,
+    Label,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GtkComponent {
+    pub component_type: GtkComponentType,
+    pub id: String,
+    pub class: String,
+    pub text: Option<String>,
+    pub children: Option<Vec<GtkComponent>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PluginResponse {
+    pub gtk: Option<Vec<GtkComponent>>,
+    pub actions: Option<Vec<PluginAction>>,
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    const TEST_CFG: &str = r#"
+        [look]
+        initial_width = 600
+        disable_tip = false
+        input_placeholder = "Search"
+
+        [network]
+        port = 8080
+        host = "localhost"
+        db_port = 3306
+        db_host = "localhost"
+    "#;
+
+    const TEST_PLUGIN_CFG: &str = r#"
+        name = "ls"
+        description = "List files"
+        cmd = "@script:myls"
+        run_on_any_query = false
+        priority = 0
+        dev = false
+    "#;
+
+    /// config file deserialization test 
+    #[test]
+    fn test_cfg_deserialization() {
+        let cfg: Config = toml::from_str(TEST_CFG).unwrap();
+        assert_eq!(cfg.look.as_ref().unwrap().initial_width.unwrap(), 600);
+        assert_eq!(cfg.look.as_ref().unwrap().disable_tip.unwrap(), false);
+        assert_eq!(cfg.look.as_ref().unwrap().input_placeholder.as_ref().unwrap(), "Search");
+        assert_eq!(cfg.network.as_ref().unwrap().port.unwrap(), 8080);
+        assert_eq!(cfg.network.as_ref().unwrap().host.as_ref().unwrap(), "localhost");
+        assert_eq!(cfg.network.as_ref().unwrap().db_port.unwrap(), 3306);
+        assert_eq!(cfg.network.as_ref().unwrap().db_host.as_ref().unwrap(), "localhost");
+    }
+
+    /// plugin config file deserialization test
+    #[test]
+    fn test_plugin_cfg_deserialization() {
+        let plugin_cfg: PluginConfig = toml::from_str(TEST_PLUGIN_CFG).unwrap();
+        assert_eq!(plugin_cfg.name, "ls");
+        assert_eq!(plugin_cfg.description, "List files");
+        assert_eq!(plugin_cfg.cmd, "@script:myls");
+        assert_eq!(plugin_cfg.run_on_any_query.unwrap(), false);
+        assert_eq!(plugin_cfg.priority.unwrap(), 0);
+        assert_eq!(plugin_cfg.dev.unwrap(), false);
+    }
+}
