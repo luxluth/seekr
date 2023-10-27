@@ -254,6 +254,13 @@ pub enum Align {
     Baseline,
 }
 
+/// GtkComponent Orientation
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Orientation {
+    Horizontal,
+    Vertical,
+}
+
 /// GtkComponent
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GtkComponent {
@@ -261,6 +268,7 @@ pub struct GtkComponent {
     pub id: String,
     pub hexpand: Option<bool>,
     pub halign: Option<Align>,
+    pub orientation: Option<Orientation>,
     pub classes: Vec<String>,
     pub text: Option<String>,
     pub children: Option<Vec<GtkComponent>>,
@@ -277,19 +285,44 @@ pub struct PluginResponse {
     pub set_icon: Option<String>,
 }
 
+pub fn titleit(title: String) -> GtkComponent {
+    new_label(title, "SectionTitle".to_string(), vec![], Some(true), Some(Align::Start))
+}
+
+pub fn wrap_section(content: GtkComponent) -> GtkComponent {
+    new_box("Section".to_string(), vec![], Some(true), None, Some(Orientation::Vertical), Some(vec![content]))
+}
+
+pub fn contentify(title: String, content: Vec<GtkComponent>) -> GtkComponent {
+    let title = titleit(title);
+    let content = GtkComponentBuilder::new(GtkComponentType::Box)
+        .id("Content".to_string())
+        .hexpand(true)
+        .add_children(content)
+        .build();
+    let box_content = GtkComponentBuilder::new(GtkComponentType::Box)
+        .id("BoxContent".to_string())
+        .hexpand(true)
+        .add_children(vec![title, content])
+        .build();
+
+    wrap_section(box_content)
+}
+
 pub fn new_label(
     text: String, 
     id: String, 
     classes: Vec<String>,
     hexpand: Option<bool>,
-    halign: Align,
+    halign: Option<Align>,
 ) -> GtkComponent { 
     GtkComponent {
         component_type: GtkComponentType::Label,
         id,
         classes,
         hexpand,
-        halign: Some(halign),
+        orientation: None,
+        halign,
         text: Some(text),
         children: None,
         on_click: None,
@@ -301,7 +334,7 @@ pub fn new_button(
     id: String, 
     classes: Vec<String>,
     hexpand: Option<bool>,
-    halign: Align,
+    halign: Option<Align>,
     on_click: PluginAction,
     children: Option<Vec<GtkComponent>>
 ) -> GtkComponent { 
@@ -310,7 +343,8 @@ pub fn new_button(
         id,
         classes,
         hexpand,
-        halign: Some(halign),
+        halign,
+        orientation: None,
         text: Some(text),
         children,
         on_click: Some(on_click),
@@ -321,7 +355,8 @@ pub fn new_box(
     id: String, 
     classes: Vec<String>,
     hexpand: Option<bool>,
-    halign: Align,
+    halign: Option<Align>, 
+    orientation: Option<Orientation>,
     children: Option<Vec<GtkComponent>>
 ) -> GtkComponent { 
     GtkComponent {
@@ -329,7 +364,8 @@ pub fn new_box(
         id,
         classes,
         hexpand,
-        halign: Some(halign),
+        halign,
+        orientation,
         text: None,
         children,
         on_click: None,
@@ -383,6 +419,7 @@ pub struct GtkComponentBuilder {
     classes: Vec<String>,
     hexpand: bool,
     halign: Align,
+    orientation: Option<Orientation>,
     text: String,
     children: Vec<GtkComponent>,
     on_click: Option<PluginAction>,
@@ -397,6 +434,7 @@ impl GtkComponentBuilder {
             classes: Vec::new(),
             hexpand: false,
             halign: Align::Start,
+            orientation: None,
             text: String::new(),
             children: Vec::new(),
             on_click: None,
@@ -459,6 +497,7 @@ impl GtkComponentBuilder {
             classes: self.classes,
             hexpand: Some(self.hexpand),
             halign: Some(self.halign),
+            orientation: self.orientation,
             text: Some(self.text),
             children: Some(self.children),
             on_click: self.on_click,

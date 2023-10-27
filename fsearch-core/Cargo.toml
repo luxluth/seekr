@@ -1,13 +1,13 @@
 [package]
 name = "fsearch-core"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 description = "The core library for fsearch"
 license = "MIT"
 repository = "https://github.com/luxluth/fsearch/tree/main/fsearch-core"
 readme = "README.md"
 homepage = "https://github.com/luxluth/fsearch/tree/main/fsearch-core#readme"
-categories = ["development-tools::fsearch-plugins"]
+categories = ["development-tools"]
 keywords = ["fsearch", "plugins", "core", "library"]
 authors = ["luxluth <delphin.blehoussi93@gmail.com>"]
 
