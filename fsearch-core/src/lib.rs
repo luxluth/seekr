@@ -239,12 +239,16 @@ pub struct GtkComponent {
     pub class: String,
     pub text: Option<String>,
     pub children: Option<Vec<GtkComponent>>,
+    /// only for buttons
+    pub on_click: Option<PluginAction>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginResponse {
     pub gtk: Option<Vec<GtkComponent>>,
-    pub actions: Option<Vec<PluginAction>>,
+    pub action: Option<PluginAction>,
+    pub error: Option<String>,
+    pub set_icon: Option<String>,
 }
 
 
