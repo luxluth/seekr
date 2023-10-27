@@ -2,9 +2,17 @@
 name = "fsearch-core"
 version = "0.0.1"
 edition = "2021"
+description = "The core library for fsearch"
+license = "MIT"
+repository = "https://github.com/luxluth/fsearch/tree/main/fsearch-core"
+readme = "README.md"
+categories = ["development-tools::fsearch-plugins"]
+keywords = ["fsearch", "plugins", "core", "library"]
+authors = ["luxluth <delphin.blehoussi93@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 serde = { version = "1.0.190", features = ["derive"] }
+serde_json = "1.0.107"
 toml = "0.8.4"

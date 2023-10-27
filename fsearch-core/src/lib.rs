@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json;
 use toml;
 use std::env;
 use std::path::PathBuf;
@@ -122,6 +123,12 @@ pub fn get_plugins() -> Vec<PluginConfig> {
     } else {
         plugins
     }
+}
+
+/// Util function to convert a PluginResponse to a json string 
+pub fn plugin_response_to_json(plugin_response: PluginResponse) -> String {
+    let json = serde_json::to_string(&plugin_response).unwrap();
+    json
 }
 
 /*************************
