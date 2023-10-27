@@ -222,11 +222,11 @@ pub struct PluginConfig {
 /// Plugin action type
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PluginActionType {
-    Open,
-    RunCmd,
-    RunScript,
+    Open(String),
+    RunCmd(String),
+    RunScript(String),
+    Launch(String),
     Exit,
-    Launch,
 }
 
 /// Plugin action
