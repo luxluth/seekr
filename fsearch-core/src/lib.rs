@@ -222,6 +222,7 @@ pub struct PluginConfig {
 /// Plugin action type
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PluginActionType {
+    Copy(String),
     Open(String),
     RunCmd(String),
     RunScript(String),
