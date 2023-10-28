@@ -14,10 +14,9 @@ jobs:
         profile: minimal
         toolchain: stable
     - name: Build & Test
-      run: cd ./fsearch-core && cargo build && cargo test && cd ..
+      run: cd ./fsearch-core && cargo build && cargo test 
     - uses: katyo/publish-crates@v2
       with:
         registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        path: './fsearch-core'
         ignore-unpublished-changes: true
 
