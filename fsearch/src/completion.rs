@@ -9,9 +9,6 @@ fn get_cmd() -> Command {
         .about("A spotlight like search util for linux")
         .version("0.0.1")
         .author("luxluth <delphin.blehoussi93@gmail.com>")
-        .subcommand(Command::new("daemon").about("Start the fsearch daemon"))
-        .subcommand(Command::new("status").about("Get daemon status"))
-        .subcommand(Command::new("stop").about("Stop the fsearch daemon"))
         .subcommand(
             Command::new("config")
                 .about("Apply specific configuration to fsearch")

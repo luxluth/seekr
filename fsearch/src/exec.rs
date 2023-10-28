@@ -14,8 +14,6 @@ const INNER_COMMANDS: [&str; 4] = [
     "open", // open a file @open <file>
     "exp",  // evaluate a mathematical expression @exp <expression>
     "help", // show help
-    // "dico", // search in the dictionnary will be a plugin
-    // "wiki", // search on wikipedia will be a plugin
 ];
 
 const HELP: &str = r#"@exit: exit the program
