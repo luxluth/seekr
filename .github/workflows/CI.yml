@@ -23,4 +23,10 @@ jobs:
       run: cargo build
     - name: Test
       run: cargo test
+    - uses: actions/upload-artifact@v3
+      with:
+        name: fsearch
+        path: target/release/fsearch
+        retention-days: 5
+
 
