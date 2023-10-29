@@ -20,7 +20,7 @@ jobs:
     - name: Additional deps
       run: sudo dnf install -y gtk4-devel dbus dbus-devel pkgconf-pkg-config
     - name: Build
-      run: cargo build
+      run: cargo build --release
     - name: Test
       run: cargo test
     - uses: actions/upload-artifact@v3
