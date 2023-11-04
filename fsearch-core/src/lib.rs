@@ -131,24 +131,21 @@ pub fn plugin_response_to_json(plugin_response: PluginResponse) -> String {
     json
 }
 
-/*************************
- * Config file structure *
- *************************/
-/*
-Example:
-[look]
-initial_width = 600 // the initial width of the window
-disable_tip = false // disable the tip suggestion
-input_placeholder = "Search" // the input placeholder
 
-[network]
-port = 8080 // the ws port
-host = "localhost" // the ws host
-db_port = 3306 // the db port
-db_host = "localhost" // the db host
-
-*/
 /// Toml config file structure
+/// Example:
+/// ```toml
+/// [look]
+/// initial_width = 600 # the initial width of the window
+/// disable_tip = false # disable the tip suggestion
+/// input_placeholder = "Search" # the input placeholder
+/// 
+/// [network]
+/// port = 8080 # the ws port
+/// host = "localhost" # the ws host
+/// db_port = 3306 # the db port
+/// db_host = "localhost" # the db host
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     /// The look section
@@ -181,9 +178,7 @@ pub struct Network {
     pub db_host: Option<String>,
 }
 
-/******************************
- * Plugin cfg file structure  *
- *****************************/
+
 /// Toml plugin config file structure
 /// The config file is located in ~/.config/fsearch/plugins/<plugin_name>.toml
 /// The plugin cmd should be in the $PATH or an absolute path to a program
@@ -237,15 +232,15 @@ pub struct PluginAction {
     pub close_after_run: Option<bool>,
 }
 
-/// GtkComponent type
+/// Data type
 #[derive(Debug, Serialize, Deserialize)]
-pub enum GtkComponentType {
+pub enum DataType {
     Box,
     Button,
     Label,
 }
 
-/// GtkComponent align
+/// Element align
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Align {
     Start,
@@ -255,248 +250,169 @@ pub enum Align {
     Baseline,
 }
 
-/// GtkComponent Orientation
+/// Element Orientation
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Orientation {
     Horizontal,
     Vertical,
 }
 
-/// GtkComponent
+/// Element
+/// The element is used to build the UI in the frontend
+/// The frontend will convert the Element to a GtkComponent
 #[derive(Debug, Serialize, Deserialize)]
-pub struct GtkComponent {
-    pub component_type: GtkComponentType,
+pub struct Element {
+    /// element type (box, button, label)
+    pub element_type: DataType,
+    /// element id
     pub id: String,
+    /// horizontal expand
     pub hexpand: Option<bool>,
+    /// vertical expand
+    pub vexpand: Option<bool>,
+    /// Text wrap
+    pub wrap: Option<bool>,
+    /// element align
     pub halign: Option<Align>,
+    /// box and button orientation
     pub orientation: Option<Orientation>,
+    /// css classes
     pub classes: Vec<String>,
+    /// labels text
     pub text: Option<String>,
-    pub children: Option<Vec<GtkComponent>>,
-
-    /// only for buttons
+    /// a list of children elements
+    pub children: Option<Vec<Element>>,
+    /// button click action
     pub on_click: Option<PluginAction>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PluginResponse {
-    pub gtk: Option<Vec<GtkComponent>>,
-    pub action: Option<PluginAction>,
-    pub error: Option<String>,
-    pub set_icon: Option<String>,
-}
-
-/// GtkComponent builder 
-/// Example:
-/// ```rust
-/// use fsearch_core::GtkComponentBuilder;
-/// use fsearch_core::GtkComponentType;
-/// use fsearch_core::Align;
-/// let gtk_component = GtkComponentBuilder::new(GtkComponentType::Box)
-///    .add_class("my-class".to_string())
-///    .hexpand(true)
-///    .halign(Align::Center)
-///    .text("My text".to_string())
-///    .add_child(GtkComponentBuilder::new(GtkComponentType::Label)
-///    .add_class("my-child-class".to_string())
-///    .hexpand(true)
-///    .halign(Align::Center)
-///    .text("My child text".to_string())
-///    .build())
-///    .build();
-/// ```
-pub struct GtkComponentBuilder {
-    component_type: GtkComponentType,
+pub struct ElementBuilder {
+    element_type: DataType,
     id: String,
-    classes: Vec<String>,
-    hexpand: bool,
-    halign: Align,
+    hexpand: Option<bool>,
+    vexpand: Option<bool>,
+    wrap: Option<bool>,
+    halign: Option<Align>,
     orientation: Option<Orientation>,
-    text: String,
-    children: Vec<GtkComponent>,
+    classes: Vec<String>,
+    text: Option<String>,
+    children: Option<Vec<Element>>,
     on_click: Option<PluginAction>,
 }
 
-impl GtkComponentBuilder {
-    /// Create a new GtkComponentBuilder
-    pub fn new(ctype: GtkComponentType) -> Self {
+impl ElementBuilder {
+    
+    pub fn new(element_type: DataType) -> Self {
         Self {
-            component_type: ctype,
+            element_type,
             id: String::new(),
-            classes: Vec::new(),
-            hexpand: false,
-            halign: Align::Start,
+            hexpand: None,
+            vexpand: None,
+            wrap: None,
+            halign: None,
             orientation: None,
-            text: String::new(),
-            children: Vec::new(),
+            classes: Vec::new(),
+            text: None,
+            children: None,
             on_click: None,
         }
     }
 
-    /// Set the id of the component
-    pub fn id(mut self, id: String) -> Self {
-        self.id = id;
+    pub fn id(mut self, id: &str) -> Self {
+        self.id = id.to_string();
         self
     }
 
-    /// Add a class to the component
-    pub fn add_class(mut self, class: String) -> Self {
-        self.classes.push(class);
-        self
-    }
-
-    /// Set the hexpand property of the component
     pub fn hexpand(mut self, hexpand: bool) -> Self {
-        self.hexpand = hexpand;
+        self.hexpand = Some(hexpand);
         self
     }
 
-    /// Set the halign property of the component
+    pub fn vexpand(mut self, vexpand: bool) -> Self {
+        self.vexpand = Some(vexpand);
+        self
+    }
+
+    pub fn wrap(mut self, wrap: bool) -> Self {
+        self.wrap = Some(wrap);
+        self
+    }
+
     pub fn halign(mut self, halign: Align) -> Self {
-        self.halign = halign;
+        self.halign = Some(halign);
         self
     }
 
-    /// Set the text property of the component
-    pub fn text(mut self, text: String) -> Self {
-        self.text = text;
+    pub fn orientation(mut self, orientation: Orientation) -> Self {
+        self.orientation = Some(orientation);
         self
     }
 
-    /// Add a child to the component
-    pub fn add_child(mut self, child: GtkComponent) -> Self {
-        self.children.push(child);
+    pub fn classes(mut self, classes: Vec<String>) -> Self {
+        self.classes = classes;
         self
     }
 
-    /// Add children to the component
-    pub fn add_children(mut self, children: Vec<GtkComponent>) -> Self {
-        self.children.extend(children);
+    pub fn text(mut self, text: &str) -> Self {
+        self.text = Some(text.to_string());
         self
     }
 
-    /// Set the on_click property of the component
+    pub fn children(mut self, children: Vec<Element>) -> Self {
+        self.children = Some(children);
+        self
+    }
+
     pub fn on_click(mut self, on_click: PluginAction) -> Self {
         self.on_click = Some(on_click);
         self
     }
 
-    /// Build the GtkComponent
-    pub fn build(self) -> GtkComponent {
-        GtkComponent {
-            component_type: self.component_type,
+    pub fn append(mut self, child: Element) -> Self {
+        match self.children {
+            Some(mut children) => {
+                children.push(child);
+                self.children = Some(children);
+            }
+            None => {
+                self.children = Some(vec![child]);
+            }
+        }
+        self
+    }
+
+
+    pub fn build(self) -> Element {
+        Element {
+            element_type: self.element_type,
             id: self.id,
-            classes: self.classes,
-            hexpand: Some(self.hexpand),
-            halign: Some(self.halign),
+            hexpand: self.hexpand,
+            vexpand: self.vexpand,
+            wrap: self.wrap,
+            halign: self.halign,
             orientation: self.orientation,
-            text: Some(self.text),
-            children: Some(self.children),
+            classes: self.classes,
+            text: self.text,
+            children: self.children,
             on_click: self.on_click,
         }
     }
-}
-pub fn titleit(title: String) -> GtkComponent {
-    new_label(title, "SectionTitle".to_string(), vec![], Some(true), Some(Align::Start))
+
 }
 
-pub fn wrap_section(content: GtkComponent) -> GtkComponent {
-    new_box("Section".to_string(), vec![], Some(true), None, Some(Orientation::Vertical), Some(vec![content]))
+/// Plugin response 
+/// The plugin response is used to send data to the frontend
+/// It contains the UI elements, the action to execute and the error message
+/// The response is send to the frontend as a json string
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PluginResponse {
+    pub title: Option<String>,
+    pub elements: Vec<Element>,
+    pub action: Option<PluginAction>,
+    pub error: Option<String>,
+    pub set_icon: Option<String>,
 }
-
-pub fn contentify(title: String, content: Vec<GtkComponent>) -> GtkComponent {
-    let title = titleit(title);
-    let content = GtkComponentBuilder::new(GtkComponentType::Box)
-        .id("Content".to_string())
-        .hexpand(true)
-        .add_children(content)
-        .build();
-    let box_content = GtkComponentBuilder::new(GtkComponentType::Box)
-        .id("BoxContent".to_string())
-        .hexpand(true)
-        .add_children(vec![title, content])
-        .build();
-
-    wrap_section(box_content)
-}
-
-pub fn new_label(
-    text: String, 
-    id: String, 
-    classes: Vec<String>,
-    hexpand: Option<bool>,
-    halign: Option<Align>,
-) -> GtkComponent { 
-    GtkComponent {
-        component_type: GtkComponentType::Label,
-        id,
-        classes,
-        hexpand,
-        orientation: None,
-        halign,
-        text: Some(text),
-        children: None,
-        on_click: None,
-    }
-}
-
-pub fn new_button(
-    text: String, 
-    id: String, 
-    classes: Vec<String>,
-    hexpand: Option<bool>,
-    halign: Option<Align>,
-    on_click: PluginAction,
-    children: Option<Vec<GtkComponent>>
-) -> GtkComponent { 
-    GtkComponent {
-        component_type: GtkComponentType::Button,
-        id,
-        classes,
-        hexpand,
-        halign,
-        orientation: None,
-        text: Some(text),
-        children,
-        on_click: Some(on_click),
-    }
-}
-
-pub fn new_box(
-    id: String, 
-    classes: Vec<String>,
-    hexpand: Option<bool>,
-    halign: Option<Align>, 
-    orientation: Option<Orientation>,
-    children: Option<Vec<GtkComponent>>
-) -> GtkComponent { 
-    GtkComponent {
-        component_type: GtkComponentType::Box,
-        id,
-        classes,
-        hexpand,
-        halign,
-        orientation,
-        text: None,
-        children,
-        on_click: None,
-    }
-}
-
-pub fn new_plugin_response(
-    gtk: Option<Vec<GtkComponent>>,
-    action: Option<PluginAction>,
-    error: Option<String>,
-    set_icon: Option<String>,
-) -> PluginResponse {
-    PluginResponse {
-        gtk,
-        action,
-        error,
-        set_icon,
-    }
-}
-
 
 pub fn new_plugin_action(
     action: PluginActionType,
