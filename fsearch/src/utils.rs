@@ -4,6 +4,8 @@ use dbus::arg::{PropMap, Variant};
 use dbus::blocking::Connection;
 use std::time::Duration;
 use time::OffsetDateTime;
+use relm4::gtk;
+use relm4::gtk::prelude::*;
 
 pub fn systemtime_strftime(system_time: std::time::SystemTime) -> String {
     let offset_date_time = OffsetDateTime::from(system_time);
@@ -88,4 +90,27 @@ pub fn send_represent_event() {
             println!("Could not connect to dbus.");
         }
     }
+}
+
+
+pub fn get_section_title(label: String) -> gtk::Label {
+    gtk::Label::builder()
+        .name("SectionTitle")
+        .css_name("SectionTitle")
+        .hexpand(true)
+        .halign(gtk::Align::Start)
+        .label(label)
+        .build()
+}
+
+pub fn wrap_section(bx: gtk::Box) -> gtk::Box {
+    let section = gtk::Box::builder()
+        .name("Section")
+        .css_name("Section")
+        .focusable(false)
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    section.append(&bx);
+    section
 }

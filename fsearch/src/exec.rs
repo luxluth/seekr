@@ -1,4 +1,6 @@
+use crate::plugin::execute_plugin;
 use crate::utils;
+use crate::utils::{get_section_title, wrap_section};
 use exmex::ExError;
 use relm4::gtk;
 use relm4::gtk::prelude::*;
@@ -22,35 +24,31 @@ const HELP: &str = r#"@exit: exit the program
 @help: show help
 "#;
 
-#[derive(Debug)]
-pub enum Action {
-    Open(String),
-    Copy(String),
-    Exit,
-}
+type Action = fsearch_core::PluginActionType;
 
 #[derive(Debug)]
 pub struct Result {
     pub action: Option<Action>,
     pub data: String,
     pub components: Vec<gtk::Box>,
-    // A component is a Box containing a Label named "Title" and a Box named "Content"
+    pub icon: Option<String>, // icon path
 }
 
 type Plug = Vec<PluginConfig>;
 
 pub fn exec(input: String, plugins: &Plug) -> Result {
-    if input.is_empty() || input.len() > 1000 { // TOINVEST: 1000 chars should be enough for a search query -- or maybe not
+    if input.is_empty() || input.len() > 1000 {
         return Result {
             action: None,
             data: input,
             components: Vec::new(),
+            icon: None,
         };
     }
 
     let input_type = detect_input_type(&input);
     match input_type {
-        InputType::Search => search(input),
+        InputType::Search => search(input, plugins),
         InputType::Mathematical => mathematical(input),
         InputType::Url => url(input),
         InputType::Command(cmd) => command(cmd.as_str(), input, plugins),
@@ -58,28 +56,7 @@ pub fn exec(input: String, plugins: &Plug) -> Result {
     }
 }
 
-fn get_section_title(label: String) -> gtk::Label {
-    gtk::Label::builder()
-        .name("SectionTitle")
-        .css_name("SectionTitle")
-        .hexpand(true)
-        .halign(gtk::Align::Start)
-        .label(label)
-        .build()
-}
-
-fn wrap_section(bx: gtk::Box) -> gtk::Box {
-    let section = gtk::Box::builder()
-        .name("Section")
-        .css_name("Section")
-        .orientation(gtk::Orientation::Vertical)
-        .build();
-
-    section.append(&bx);
-    section
-}
-
-fn search(input: String) -> Result {
+fn search(input: String, plugins: &Plug) -> Result {
     let mut components: Vec<gtk::Box> = Vec::new();
     let search_prefix = gtk::Label::builder()
         .name("SearchPrefix")
@@ -95,21 +72,47 @@ fn search(input: String) -> Result {
         .hexpand(true)
         .halign(gtk::Align::Start)
         .label(format!("«{}»", input))
+        .ellipsize(gtk::pango::EllipsizeMode::End)
         .build();
 
     let box_content = gtk::Box::builder()
         .name("Search")
         .css_name("Search")
         .orientation(gtk::Orientation::Vertical)
+        .focusable(false)
         .build();
     box_content.append(&search_prefix);
     box_content.append(&search_query);
     components.push(box_content);
 
+    let mut icon = None;
+    let mut action = None;
+
+    for plugin in plugins {
+        match plugin.run_on_any_query {
+            Some(run_on_any_query) => {
+                if run_on_any_query {
+                    let (comp, plug_action, set_icon) = execute_plugin(plugin, input.clone());
+                    if comp.is_some() {
+                        components.push(comp.unwrap());
+                    }
+                    if plug_action.is_some() {
+                        action = plug_action;
+                    }
+                    if set_icon.is_some() {
+                        icon = set_icon;
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+
     Result {
-        action: None,
+        action,
         data: input,
         components,
+        icon,
     }
 }
 
@@ -119,6 +122,7 @@ fn mathematical(input: String) -> Result {
             action: None,
             data: input,
             components: Vec::new(),
+            icon: None,
         };
     }
     let result = exmex::eval_str::<f64>(&input);
@@ -146,6 +150,7 @@ fn mathematical_result(input: String, result: f64) -> Result {
         .hexpand(true)
         .halign(gtk::Align::Start)
         .label(result.to_string())
+        .ellipsize(gtk::pango::EllipsizeMode::End)
         .build();
 
     let box_content = gtk::Box::builder()
@@ -161,6 +166,7 @@ fn mathematical_result(input: String, result: f64) -> Result {
         action: Some(Action::Copy(result.to_string())),
         data: input,
         components,
+        icon: None,
     }
 }
 
@@ -193,6 +199,7 @@ fn mathematical_error(input: String, err: ExError) -> Result {
         action: None,
         data: input,
         components,
+        icon: None,
     }
 }
 
@@ -224,6 +231,7 @@ fn url(input: String) -> Result {
         action: Some(Action::Open(input.clone())),
         data: input,
         components,
+        icon: None,
     }
 }
 
@@ -233,6 +241,7 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
             action: Some(Action::Exit),
             data: input,
             components: Vec::new(),
+            icon: None,
         },
 
         "open" => {
@@ -264,6 +273,7 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
                 action: Some(Action::Open(file.clone())),
                 data: input,
                 components,
+                icon: None,
             }
         }
 
@@ -285,7 +295,9 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
             let plugin_title = get_section_title("Plugins".to_string());
             let mut plugin_content = String::new();
             for plugin in plugins {
-                plugin_content.push_str(format!("@{} <query>: {}\n", plugin.name, plugin.description).as_str());
+                plugin_content.push_str(
+                    format!("@{} <query>: {}\n", plugin.name, plugin.description).as_str(),
+                );
             }
 
             let plugin_content = gtk::Label::builder()
@@ -323,23 +335,7 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
                 action: None,
                 data: input,
                 components,
-            }
-        }
-
-        "dico" => {
-            // find in the dictionnary
-            Result {
-                action: None,
-                data: input,
-                components: Vec::new(),
-            }
-        }
-        "wiki" => {
-            // search on wikipedia
-            Result {
-                action: None,
-                data: input,
-                components: Vec::new(),
+                icon: None,
             }
         }
 
@@ -347,6 +343,7 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
             action: None,
             data: input,
             components: Vec::new(),
+            icon: None,
         },
     }
 }
@@ -399,6 +396,7 @@ fn f(file: String) -> Result {
             action: None,
             data: file,
             components,
+            icon: None,
         };
     }
 
@@ -461,6 +459,7 @@ fn f(file: String) -> Result {
                     action: None,
                     data: file,
                     components,
+                    icon: None,
                 };
             }
             // is file -> file_name size file_type last_modified
@@ -528,6 +527,7 @@ fn f(file: String) -> Result {
                     action: None,
                     data: file,
                     components,
+                    icon: None,
                 };
             }
             // is symlink -> symlink_name size file_type last_modified
@@ -595,12 +595,14 @@ fn f(file: String) -> Result {
                     action: None,
                     data: file,
                     components,
+                    icon: None,
                 };
             } else {
                 return Result {
                     action: None,
                     data: file,
                     components,
+                    icon: None,
                 };
             }
         }
@@ -629,6 +631,7 @@ fn f(file: String) -> Result {
                 action: None,
                 data: file,
                 components,
+                icon: None,
             };
         }
     }

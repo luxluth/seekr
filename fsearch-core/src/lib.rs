@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
-use toml;
 use std::env;
 use std::path::PathBuf;
+use toml;
 
 /// Get a text file content as a string
 fn get_file_content(path: &PathBuf) -> String {
@@ -90,7 +90,7 @@ fn has_plugins() -> (bool, Option<PathBuf>) {
                 (false, None)
             }
         },
-    } 
+    }
 }
 
 /// Get the plugins config .toml file content
@@ -125,12 +125,42 @@ pub fn get_plugins() -> Vec<PluginConfig> {
     }
 }
 
-/// Util function to convert a PluginResponse to a json string 
+/// Util function to convert a PluginResponse to a json string
 pub fn plugin_response_to_json(plugin_response: PluginResponse) -> String {
     let json = serde_json::to_string(&plugin_response).unwrap();
     json
 }
 
+pub fn get_scripts_dir() -> String {
+    let mut dir = String::new();
+
+    match env::var("XDG_CONFIG_HOME") {
+        Ok(v) => {
+            dir = PathBuf::from(v)
+                .join("fsearch")
+                .join("scripts")
+                .to_str()
+                .unwrap()
+                .to_string();
+        }
+        Err(_) => match env::var("HOME") {
+            Ok(v) => {
+                dir = PathBuf::from(v)
+                    .join(".config")
+                    .join("fsearch")
+                    .join("scripts")
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+            }
+            Err(_) => {
+                println!("Could not find config file.");
+            }
+        },
+    }
+
+    dir
+}
 
 /// Toml config file structure
 /// Example:
@@ -139,7 +169,7 @@ pub fn plugin_response_to_json(plugin_response: PluginResponse) -> String {
 /// initial_width = 600 # the initial width of the window
 /// disable_tip = false # disable the tip suggestion
 /// input_placeholder = "Search" # the input placeholder
-/// 
+///
 /// [network]
 /// port = 8080 # the ws port
 /// host = "localhost" # the ws host
@@ -162,7 +192,7 @@ pub struct Look {
     /// Disable the tip suggestion
     pub disable_tip: Option<bool>,
     /// The input placeholder
-    pub input_placeholder: Option<String>
+    pub input_placeholder: Option<String>,
 }
 
 /// The network section
@@ -177,7 +207,6 @@ pub struct Network {
     /// The db host
     pub db_host: Option<String>,
 }
-
 
 /// Toml plugin config file structure
 /// The config file is located in ~/.config/fsearch/plugins/<plugin_name>.toml
@@ -236,8 +265,9 @@ pub struct PluginAction {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DataType {
     Box,
-    EventBox,
     Button,
+    EventBox,
+    Image,
     Label,
 }
 
@@ -285,6 +315,8 @@ pub struct Element {
     pub children: Option<Vec<Element>>,
     /// button click action
     pub on_click: Option<PluginAction>,
+    /// image path
+    pub image_path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -300,10 +332,10 @@ pub struct ElementBuilder {
     text: Option<String>,
     children: Option<Vec<Element>>,
     on_click: Option<PluginAction>,
+    image_path: Option<String>,
 }
 
 impl ElementBuilder {
-    
     pub fn new(element_type: DataType) -> Self {
         Self {
             element_type,
@@ -317,6 +349,7 @@ impl ElementBuilder {
             text: None,
             children: None,
             on_click: None,
+            image_path: None,
         }
     }
 
@@ -383,6 +416,10 @@ impl ElementBuilder {
         self
     }
 
+    pub fn image_path(mut self, image_path: &str) -> Self {
+        self.image_path = Some(image_path.to_string());
+        self
+    }
 
     pub fn build(self) -> Element {
         Element {
@@ -397,12 +434,12 @@ impl ElementBuilder {
             text: self.text,
             children: self.children,
             on_click: self.on_click,
+            image_path: self.image_path,
         }
     }
-
 }
 
-/// Plugin response 
+/// Plugin response
 /// The plugin response is used to send data to the frontend
 /// It contains the UI elements, the action to execute and the error message
 /// The response is send to the frontend as a json string
@@ -415,21 +452,17 @@ pub struct PluginResponse {
     pub set_icon: Option<String>,
 }
 
-pub fn new_plugin_action(
-    action: PluginActionType,
-    close_after_run: Option<bool>,
-) -> PluginAction {
+pub fn new_plugin_action(action: PluginActionType, close_after_run: Option<bool>) -> PluginAction {
     PluginAction {
         action,
         close_after_run,
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     const TEST_CFG: &str = r#"
         [look]
         initial_width = 600
@@ -452,17 +485,31 @@ mod tests {
         dev = false
     "#;
 
-    /// config file deserialization test 
+    /// config file deserialization test
     #[test]
     fn test_cfg_deserialization() {
         let cfg: Config = toml::from_str(TEST_CFG).unwrap();
         assert_eq!(cfg.look.as_ref().unwrap().initial_width.unwrap(), 600);
         assert_eq!(cfg.look.as_ref().unwrap().disable_tip.unwrap(), false);
-        assert_eq!(cfg.look.as_ref().unwrap().input_placeholder.as_ref().unwrap(), "Search");
+        assert_eq!(
+            cfg.look
+                .as_ref()
+                .unwrap()
+                .input_placeholder
+                .as_ref()
+                .unwrap(),
+            "Search"
+        );
         assert_eq!(cfg.network.as_ref().unwrap().port.unwrap(), 8080);
-        assert_eq!(cfg.network.as_ref().unwrap().host.as_ref().unwrap(), "localhost");
+        assert_eq!(
+            cfg.network.as_ref().unwrap().host.as_ref().unwrap(),
+            "localhost"
+        );
         assert_eq!(cfg.network.as_ref().unwrap().db_port.unwrap(), 3306);
-        assert_eq!(cfg.network.as_ref().unwrap().db_host.as_ref().unwrap(), "localhost");
+        assert_eq!(
+            cfg.network.as_ref().unwrap().db_host.as_ref().unwrap(),
+            "localhost"
+        );
     }
 
     /// plugin config file deserialization test

@@ -6,7 +6,7 @@ mod plugin;
 mod utils;
 
 use config::APP_ID;
-use exec::Action;
+use fsearch_core::PluginActionType as Action;
 
 use clap::Parser;
 use cli::{Command, FsearchArgs};
@@ -20,7 +20,7 @@ use relm4::{prelude::*, RelmIterChildrenExt};
 
 use std::process::exit;
 
-use fsearch_core::{get_css, get_cfg, get_plugins, Config, PluginConfig};
+use fsearch_core::{get_cfg, get_css, get_plugins, Config, PluginConfig};
 
 struct App {
     input: String,
@@ -68,7 +68,7 @@ impl SimpleComponent for App {
                     set_hexpand: true,
                     set_focusable: false,
                     set_widget_name: "EntryAndIconBox",
-                    
+
                     #[name="entry"]
                     gtk::Entry {
                         set_activates_default: true,
@@ -92,7 +92,7 @@ impl SimpleComponent for App {
                         set_hexpand: false,
                         set_focusable: false,
                         set_widget_name: "EntryIconBox",
-                        
+
                         #[name="dynamic_icon"]
                         gtk::Image {
                             set_widget_name: "EntryIcon",
@@ -100,8 +100,8 @@ impl SimpleComponent for App {
                         },
                     },
                 },
-                
-                
+
+
                 #[name="tip"]
                 gtk::Label {
                     set_widget_name: "Tip",
@@ -181,6 +181,12 @@ impl SimpleComponent for App {
         match msg {
             Msg::SetInput(input) => {
                 self.input = input;
+                if self.input.len() == 0 {
+                    self.dynamic_icon
+                        .as_ref()
+                        .unwrap()
+                        .set_from_icon_name(None);
+                }
                 let res = exec::exec(self.input.clone(), &self.plugins);
                 if res.components.len() == 0 && res.action.is_none() {
                     self.dynamic_box
@@ -210,6 +216,21 @@ impl SimpleComponent for App {
                             self.action = None;
                         }
                     }
+
+                    match res.icon {
+                        Some(icon_path) => {
+                            self.dynamic_icon
+                                .as_ref()
+                                .unwrap()
+                                .set_from_file(Some(icon_path.as_str()));
+                        },
+                        None => {
+                            self.dynamic_icon
+                                .as_ref()
+                                .unwrap()
+                                .set_from_icon_name(None);
+                        },
+                    }
                 }
             }
 
@@ -231,6 +252,9 @@ impl SimpleComponent for App {
                         println!("Copy {:?}!", something);
                         utils::copy_to_clipboard(something);
                     }
+                    Action::Launch(_something) => todo!(),
+                    Action::RunCmd(_cmd) => todo!(),
+                    Action::RunScript(_script) => todo!(),
                 },
                 None => return,
             },
