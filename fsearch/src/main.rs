@@ -96,6 +96,7 @@ impl SimpleComponent for App {
                         #[name="dynamic_icon"]
                         gtk::Image {
                             set_widget_name: "EntryIcon",
+                            set_icon_size: gtk::IconSize::Large,
                             set_halign: gtk::Align::Center,
                         },
                     },
