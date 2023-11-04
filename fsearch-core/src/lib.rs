@@ -236,6 +236,7 @@ pub struct PluginAction {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum DataType {
     Box,
+    EventBox,
     Button,
     Label,
 }

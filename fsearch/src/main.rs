@@ -2,7 +2,7 @@ mod cli;
 mod completion;
 mod config;
 mod exec;
-// mod plugin;
+mod plugin;
 mod utils;
 
 use config::APP_ID;

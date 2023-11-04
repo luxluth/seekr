@@ -20,6 +20,5 @@ relm4-components = "0.6.2"
 relm4-icons = { version = "0.6.0", features = ["loupe"] }
 serde = { version = "1.0.190", features = ["derive"] }
 time = { version = "0.3.30", features = ["macros"] }
-tokio = { version = "1.33.0", features = ["full"] }
 toml = "0.8.4"
 
