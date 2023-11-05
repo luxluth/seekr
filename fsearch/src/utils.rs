@@ -2,10 +2,10 @@ use crate::config::APP_ID;
 use copypasta::{ClipboardContext, ClipboardProvider};
 use dbus::arg::{PropMap, Variant};
 use dbus::blocking::Connection;
-use std::time::Duration;
-use time::OffsetDateTime;
 use relm4::gtk;
 use relm4::gtk::prelude::*;
+use std::time::Duration;
+use time::OffsetDateTime;
 
 pub fn systemtime_strftime(system_time: std::time::SystemTime) -> String {
     let offset_date_time = OffsetDateTime::from(system_time);
@@ -92,12 +92,12 @@ pub fn send_represent_event() {
     }
 }
 
-
 pub fn get_section_title(label: String) -> gtk::Label {
     gtk::Label::builder()
         .name("SectionTitle")
         .css_name("SectionTitle")
         .hexpand(true)
+        .focusable(false)
         .halign(gtk::Align::Start)
         .label(label)
         .build()
@@ -106,8 +106,8 @@ pub fn get_section_title(label: String) -> gtk::Label {
 pub fn wrap_section(bx: gtk::Box) -> gtk::Box {
     let section = gtk::Box::builder()
         .name("Section")
+        .sensitive(false)
         .css_name("Section")
-        .focusable(false)
         .orientation(gtk::Orientation::Vertical)
         .build();
 
@@ -130,12 +130,15 @@ pub fn replace_placeholders(cmd: String) -> String {
 
 pub fn exec_a_separate_process(cmd: &str) -> bool {
     let mut cmd = cmd.split_whitespace();
-    match std::process::Command::new(cmd.next().unwrap()).args(cmd).spawn() {
+    match std::process::Command::new(cmd.next().unwrap())
+        .args(cmd)
+        .spawn()
+    {
         Ok(_) => {
             return true;
         }
         Err(_) => {
             return false;
         }
-    }    
+    }
 }

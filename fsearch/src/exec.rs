@@ -61,6 +61,7 @@ fn search(input: String, plugins: &Plug) -> Result {
     let search_prefix = gtk::Label::builder()
         .name("SearchPrefix")
         .css_name("SearchPrefix")
+        .focusable(false)
         .halign(gtk::Align::Start)
         .label(format!("Searching for "))
         .build();
@@ -69,6 +70,7 @@ fn search(input: String, plugins: &Plug) -> Result {
         .name("SearchQuery")
         .css_name("SearchQuery")
         .wrap(true)
+        .focusable(false)
         .hexpand(true)
         .halign(gtk::Align::Start)
         .label(format!("«{}»", input))
@@ -77,9 +79,10 @@ fn search(input: String, plugins: &Plug) -> Result {
 
     let box_content = gtk::Box::builder()
         .name("Search")
+        .focusable(false)
+        .sensitive(false)
         .css_name("Search")
         .orientation(gtk::Orientation::Vertical)
-        .focusable(false)
         .build();
     box_content.append(&search_prefix);
     box_content.append(&search_query);

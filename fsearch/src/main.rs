@@ -60,13 +60,11 @@ impl SimpleComponent for App {
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 set_hexpand: true,
-                set_focusable: false,
                 set_widget_name: "EntryBox",
 
                 gtk::Box {
                     set_orientation: gtk::Orientation::Horizontal,
                     set_hexpand: true,
-                    set_focusable: false,
                     set_widget_name: "EntryAndIconBox",
 
                     #[name="entry"]
@@ -90,7 +88,6 @@ impl SimpleComponent for App {
                     gtk::Box {
                         set_orientation: gtk::Orientation::Horizontal,
                         set_hexpand: false,
-                        set_focusable: false,
                         set_widget_name: "EntryIconBox",
 
                         #[name="dynamic_icon"]
@@ -113,8 +110,9 @@ impl SimpleComponent for App {
 
                 #[name="dynamic_box"]
                 gtk::ListBox {
-                    set_hexpand: true,
                     set_focusable: false,
+                    set_sensitive: false,
+                    set_hexpand: true,
                     set_widget_name: "DynamicBox",
                 },
             }
@@ -183,10 +181,7 @@ impl SimpleComponent for App {
             Msg::SetInput(input) => {
                 self.input = input;
                 if self.input.len() == 0 {
-                    self.dynamic_icon
-                        .as_ref()
-                        .unwrap()
-                        .set_from_icon_name(None);
+                    self.dynamic_icon.as_ref().unwrap().set_from_icon_name(None);
                 }
                 let res = exec::exec(self.input.clone(), &self.plugins);
                 if res.components.len() == 0 && res.action.is_none() {
@@ -224,13 +219,10 @@ impl SimpleComponent for App {
                                 .as_ref()
                                 .unwrap()
                                 .set_from_file(Some(icon_path.as_str()));
-                        },
+                        }
                         None => {
-                            self.dynamic_icon
-                                .as_ref()
-                                .unwrap()
-                                .set_from_icon_name(None);
-                        },
+                            self.dynamic_icon.as_ref().unwrap().set_from_icon_name(None);
+                        }
                     }
                 }
             }
@@ -258,12 +250,12 @@ impl SimpleComponent for App {
                         if utils::exec_a_separate_process(something.as_str()) {
                             relm4::main_application().quit();
                         }
-                    },
+                    }
                     Action::RunCmd(cmd) => {
                         if utils::exec_a_separate_process(&*cmd.as_str()) {
                             relm4::main_application().quit();
                         }
-                    },
+                    }
                     Action::RunScript(_script) => todo!(),
                 },
                 None => return,

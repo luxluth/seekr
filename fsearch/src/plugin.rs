@@ -82,6 +82,8 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
             let mut event_box = gtk::Box::builder();
             event_box = event_box.css_name(component.id);
             event_box = event_box.css_classes(component.classes);
+            event_box = event_box.sensitive(true).focusable(true);
+
             let hexpand = component.hexpand;
             match hexpand {
                 Some(hexpand) => {
@@ -371,17 +373,17 @@ pub fn execute_plugin(
                 .orientation(gtk::Orientation::Vertical)
                 .hexpand(true)
                 .build();
-            
+
             for element in elements {
                 content.append(&element);
             }
 
             let title = get_section_title(output.title.unwrap_or(plugin.name.clone()));
             let box_content = gtk::Box::builder()
-                    .name("BoxContent")
-                    .css_name("BoxContent")
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
+                .name("BoxContent")
+                .css_name("BoxContent")
+                .orientation(gtk::Orientation::Vertical)
+                .build();
             box_content.append(&title);
             box_content.append(&content);
 
@@ -418,5 +420,4 @@ pub fn execute_plugin(
             return (None, None, None);
         }
     }
-
 }
