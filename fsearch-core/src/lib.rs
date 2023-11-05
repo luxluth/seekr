@@ -303,6 +303,8 @@ pub struct Element {
     pub vexpand: Option<bool>,
     /// Text wrap
     pub wrap: Option<bool>,
+    /// ellipsize Text
+    pub ellipsize: Option<bool>,
     /// element align
     pub halign: Option<Align>,
     /// box and button orientation
@@ -326,6 +328,7 @@ pub struct ElementBuilder {
     hexpand: Option<bool>,
     vexpand: Option<bool>,
     wrap: Option<bool>,
+    ellipsize: Option<bool>,
     halign: Option<Align>,
     orientation: Option<Orientation>,
     classes: Vec<String>,
@@ -343,6 +346,7 @@ impl ElementBuilder {
             hexpand: None,
             vexpand: None,
             wrap: None,
+            ellipsize: None,
             halign: None,
             orientation: None,
             classes: Vec::new(),
@@ -370,6 +374,11 @@ impl ElementBuilder {
 
     pub fn wrap(mut self, wrap: bool) -> Self {
         self.wrap = Some(wrap);
+        self
+    }
+
+    pub fn ellipsize(mut self, ellipsize: bool) -> Self {
+        self.ellipsize = Some(ellipsize);
         self
     }
 
@@ -428,6 +437,7 @@ impl ElementBuilder {
             hexpand: self.hexpand,
             vexpand: self.vexpand,
             wrap: self.wrap,
+            ellipsize: self.ellipsize,
             halign: self.halign,
             orientation: self.orientation,
             classes: self.classes,
