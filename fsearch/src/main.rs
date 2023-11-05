@@ -253,8 +253,16 @@ impl SimpleComponent for App {
                         println!("Copy {:?}!", something);
                         utils::copy_to_clipboard(something);
                     }
-                    Action::Launch(_something) => todo!(),
-                    Action::RunCmd(_cmd) => todo!(),
+                    Action::Launch(something) => {
+                        if utils::exec_a_separate_process(&*something.as_str()) {
+                            relm4::main_application().quit();
+                        }
+                    },
+                    Action::RunCmd(cmd) => {
+                        if utils::exec_a_separate_process(&*cmd.as_str()) {
+                            relm4::main_application().quit();
+                        }
+                    },
                     Action::RunScript(_script) => todo!(),
                 },
                 None => return,

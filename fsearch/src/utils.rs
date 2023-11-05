@@ -114,3 +114,15 @@ pub fn wrap_section(bx: gtk::Box) -> gtk::Box {
     section.append(&bx);
     section
 }
+
+pub fn exec_a_separate_process(cmd: &str) -> bool {
+    let mut cmd = cmd.split_whitespace();
+    match std::process::Command::new(cmd.next().unwrap()).args(cmd).spawn() {
+        Ok(_) => {
+            return true;
+        }
+        Err(_) => {
+            return false;
+        }
+    }    
+}
