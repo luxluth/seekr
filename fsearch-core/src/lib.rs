@@ -169,19 +169,11 @@ pub fn get_scripts_dir() -> String {
 /// initial_width = 600 # the initial width of the window
 /// disable_tip = false # disable the tip suggestion
 /// input_placeholder = "Search" # the input placeholder
-///
-/// [network]
-/// port = 8080 # the ws port
-/// host = "localhost" # the ws host
-/// db_port = 3306 # the db port
-/// db_host = "localhost" # the db host
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     /// The look section
     pub look: Option<Look>,
-    /// The network section
-    pub network: Option<Network>,
 }
 
 /// The look section
@@ -193,19 +185,6 @@ pub struct Look {
     pub disable_tip: Option<bool>,
     /// The input placeholder
     pub input_placeholder: Option<String>,
-}
-
-/// The network section
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Network {
-    /// The ws port
-    pub port: Option<u32>,
-    /// The ws host
-    pub host: Option<String>,
-    /// The db port
-    pub db_port: Option<u32>,
-    /// The db host
-    pub db_host: Option<String>,
 }
 
 /// Toml plugin config file structure
@@ -478,12 +457,6 @@ mod tests {
         initial_width = 600
         disable_tip = false
         input_placeholder = "Search"
-
-        [network]
-        port = 8080
-        host = "localhost"
-        db_port = 3306
-        db_host = "localhost"
     "#;
 
     const TEST_PLUGIN_CFG: &str = r#"
@@ -509,16 +482,6 @@ mod tests {
                 .as_ref()
                 .unwrap(),
             "Search"
-        );
-        assert_eq!(cfg.network.as_ref().unwrap().port.unwrap(), 8080);
-        assert_eq!(
-            cfg.network.as_ref().unwrap().host.as_ref().unwrap(),
-            "localhost"
-        );
-        assert_eq!(cfg.network.as_ref().unwrap().db_port.unwrap(), 3306);
-        assert_eq!(
-            cfg.network.as_ref().unwrap().db_host.as_ref().unwrap(),
-            "localhost"
         );
     }
 
