@@ -353,6 +353,9 @@ pub fn execute_plugin(
     match output {
         Ok(output) => {
             let mut elements = Vec::new();
+            if output.elements.len() == 0 {
+                return (None, None, None);
+            }
             for element in output.elements {
                 let element = elem_to_gtk_widget(element);
                 elements.push(element);
