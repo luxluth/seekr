@@ -115,6 +115,19 @@ pub fn wrap_section(bx: gtk::Box) -> gtk::Box {
     section
 }
 
+/// replace placeholders in the command string
+/// every placeholder starts with a % sign and ends with a space
+pub fn replace_placeholders(cmd: String) -> String {
+    let cmd = cmd.split_whitespace().collect::<Vec<&str>>();
+    let mut new_cmd = Vec::new();
+    for c in cmd {
+        if !c.starts_with("%") {
+            new_cmd.push(c);
+        }
+    }
+    new_cmd.join(" ")
+}
+
 pub fn exec_a_separate_process(cmd: &str) -> bool {
     let mut cmd = cmd.split_whitespace();
     match std::process::Command::new(cmd.next().unwrap()).args(cmd).spawn() {

@@ -254,7 +254,8 @@ impl SimpleComponent for App {
                         utils::copy_to_clipboard(something);
                     }
                     Action::Launch(something) => {
-                        if utils::exec_a_separate_process(&*something.as_str()) {
+                        let something = utils::replace_placeholders(something.clone());
+                        if utils::exec_a_separate_process(something.as_str()) {
                             relm4::main_application().quit();
                         }
                     },
