@@ -246,6 +246,15 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
                 None => {}
             }
 
+            match component.ellipsize {
+                Some(ellipsize) => {
+                    if ellipsize {
+                        label = label.ellipsize(gtk::pango::EllipsizeMode::End);
+                    }
+                }
+                None => {}
+            }
+
             let label = label.build();
             label.into()
         }
