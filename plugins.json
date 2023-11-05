@@ -1,0 +1,10 @@
+{
+    "plugins": [
+        {
+            "repo": "https://github.com/luxluth/fsearch-plugin-app-launcher.git",
+            "name": "app-launcher",
+            "version": "0.0.5",
+            "author": "luxluth"
+        }
+    ]
+}
