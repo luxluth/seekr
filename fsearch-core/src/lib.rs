@@ -1,19 +1,13 @@
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::env;
 use std::path::PathBuf;
-use toml;
 
 /// Get a text file content as a string
 fn get_file_content(path: &PathBuf) -> String {
     let content = std::fs::read_to_string(path);
     match content {
-        Ok(c) => {
-            return c;
-        }
-        Err(_) => {
-            return String::new();
-        }
+        Ok(c) => c,
+        Err(_) => String::new(),
     }
 }
 
@@ -127,8 +121,7 @@ pub fn get_plugins() -> Vec<PluginConfig> {
 
 /// Util function to convert a PluginResponse to a json string
 pub fn plugin_response_to_json(plugin_response: PluginResponse) -> String {
-    let json = serde_json::to_string(&plugin_response).unwrap();
-    json
+    serde_json::to_string(&plugin_response).unwrap()
 }
 
 pub fn get_scripts_dir() -> String {
@@ -473,7 +466,7 @@ mod tests {
     fn test_cfg_deserialization() {
         let cfg: Config = toml::from_str(TEST_CFG).unwrap();
         assert_eq!(cfg.look.as_ref().unwrap().initial_width.unwrap(), 600);
-        assert_eq!(cfg.look.as_ref().unwrap().disable_tip.unwrap(), false);
+        assert!(!cfg.look.as_ref().unwrap().disable_tip.unwrap());
         assert_eq!(
             cfg.look
                 .as_ref()
@@ -492,8 +485,8 @@ mod tests {
         assert_eq!(plugin_cfg.name, "ls");
         assert_eq!(plugin_cfg.description, "List files");
         assert_eq!(plugin_cfg.cmd, "@script:myls");
-        assert_eq!(plugin_cfg.run_on_any_query.unwrap(), false);
+        assert!(!plugin_cfg.run_on_any_query.unwrap());
         assert_eq!(plugin_cfg.priority.unwrap(), 0);
-        assert_eq!(plugin_cfg.dev.unwrap(), false);
+        assert!(!plugin_cfg.dev.unwrap());
     }
 }

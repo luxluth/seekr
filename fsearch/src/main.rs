@@ -28,6 +28,7 @@ struct App {
     plugins: Vec<PluginConfig>,
     dynamic_box: Option<gtk::ListBox>,
     dynamic_icon: Option<gtk::Image>,
+
     action: Option<Action>,
 }
 
@@ -35,10 +36,6 @@ struct App {
 enum Msg {
     SetInput(String),
     Enter,
-}
-
-fn load_css() {
-    relm4::set_global_css(get_css().as_str());
 }
 
 #[relm4::component]
@@ -122,10 +119,10 @@ impl SimpleComponent for App {
     // Initialize the component.
     fn init(
         input: Self::Init,
-        root: &Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        let model = App {
+        let mut model = App {
             input,
             config: get_cfg(),
             plugins: get_plugins(),
@@ -138,7 +135,6 @@ impl SimpleComponent for App {
 
         let represent_action = SimpleAction::new("represent", None);
         represent_action.connect_activate(clone!(@weak root => move |_, _| {
-            load_css();
             root.present();
         }));
 
@@ -165,26 +161,24 @@ impl SimpleComponent for App {
             }
         }
 
-        let mut component_parts = ComponentParts { model, widgets };
+        let dynamic_box = widgets.dynamic_box.clone();
+        model.dynamic_box = Some(dynamic_box);
 
-        let dynamic_box = component_parts.widgets.dynamic_box.clone();
-        component_parts.model.dynamic_box = Some(dynamic_box.clone());
+        let dynamic_icon = widgets.dynamic_icon.clone();
+        model.dynamic_icon = Some(dynamic_icon);
 
-        let dynamic_icon = component_parts.widgets.dynamic_icon.clone();
-        component_parts.model.dynamic_icon = Some(dynamic_icon.clone());
-
-        component_parts
+        ComponentParts { model, widgets }
     }
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             Msg::SetInput(input) => {
                 self.input = input;
-                if self.input.len() == 0 {
+                if self.input.is_empty() {
                     self.dynamic_icon.as_ref().unwrap().set_from_icon_name(None);
                 }
                 let res = exec::exec(self.input.clone(), &self.plugins);
-                if res.components.len() == 0 && res.action.is_none() {
+                if res.components.is_empty() && res.action.is_none() {
                     self.dynamic_box
                         .as_ref()
                         .unwrap()
@@ -234,11 +228,8 @@ impl SimpleComponent for App {
                     }
                     Action::Open(something) => {
                         println!("Open {:?}!", something);
-                        match open::that(something.trim_start()) {
-                            Ok(_) => {
-                                relm4::main_application().quit();
-                            }
-                            Err(_) => {}
+                        if open::that(something.trim_start()).is_ok() {
+                            relm4::main_application().quit();
                         };
                     }
                     Action::Copy(something) => {
@@ -252,13 +243,13 @@ impl SimpleComponent for App {
                         }
                     }
                     Action::RunCmd(cmd) => {
-                        if utils::exec_a_separate_process(&*cmd.as_str()) {
+                        if utils::exec_a_separate_process(cmd.as_str()) {
                             relm4::main_application().quit();
                         }
                     }
                     Action::RunScript(_script) => todo!(),
                 },
-                None => return,
+                None => (),
             },
         }
     }
@@ -267,8 +258,9 @@ impl SimpleComponent for App {
 fn main() {
     let matches = FsearchArgs::parse();
     match matches.command {
-        Some(Command::Config(config)) => match config {
-            cli::ConfigArgs { config, css } => {
+        Some(Command::Config(config)) => {
+            let cli::ConfigArgs { config, css } = config;
+            {
                 let at_least_one = config.is_some() || css.is_some();
                 if config.is_some() {
                     println!("Config {:?}", config.unwrap());
@@ -281,7 +273,7 @@ fn main() {
                     exit(1);
                 }
             }
-        },
+        }
         Some(Command::Completion(arg)) => {
             let shell = arg.shell;
             completion::generate_completion(shell);
@@ -294,7 +286,7 @@ fn main() {
         return;
     }
     let app = RelmApp::new(APP_ID);
-    relm4_icons::initialize_icons();
-    load_css();
+
+    app.set_global_css(get_css().as_str());
     app.run::<App>(String::new());
 }

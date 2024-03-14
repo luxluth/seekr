@@ -13,38 +13,28 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
             let mut box_ = gtk::Box::builder();
             box_ = box_.css_name(component.id);
             box_ = box_.css_classes(component.classes);
-            let orientation = component.orientation;
-            match orientation {
-                Some(orientation) => match orientation {
+
+            if let Some(orientation) = component.orientation {
+                match orientation {
                     Orientation::Horizontal => {
                         box_ = box_.orientation(gtk::Orientation::Horizontal);
                     }
                     Orientation::Vertical => {
                         box_ = box_.orientation(gtk::Orientation::Vertical);
                     }
-                },
-                None => {}
-            }
-
-            let hexpand = component.hexpand;
-            match hexpand {
-                Some(hexpand) => {
-                    box_ = box_.hexpand(hexpand);
                 }
-                None => {}
             }
 
-            let vexpand = component.vexpand;
-            match vexpand {
-                Some(vexpand) => {
-                    box_ = box_.vexpand(vexpand);
-                }
-                None => {}
+            if let Some(hexpand) = component.hexpand {
+                box_ = box_.hexpand(hexpand);
             }
 
-            let halign = component.halign;
-            match halign {
-                Some(halign) => match halign {
+            if let Some(vexpand) = component.vexpand {
+                box_ = box_.vexpand(vexpand);
+            }
+
+            if let Some(halign) = component.halign {
+                match halign {
                     Align::Start => {
                         box_ = box_.halign(gtk::Align::Start);
                     }
@@ -60,19 +50,15 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
                     Align::Baseline => {
                         box_ = box_.halign(gtk::Align::Baseline);
                     }
-                },
-                None => {}
+                }
             }
 
             let box_ = box_.build();
-            match component.children {
-                Some(children) => {
-                    for child in children {
-                        let child_widget = elem_to_gtk_widget(child);
-                        box_.append(&child_widget);
-                    }
+            if let Some(children) = component.children {
+                for child in children {
+                    let child_widget = elem_to_gtk_widget(child);
+                    box_.append(&child_widget);
                 }
-                None => {}
             }
 
             box_.into()
@@ -84,25 +70,16 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
             event_box = event_box.css_classes(component.classes);
             event_box = event_box.sensitive(true).focusable(true);
 
-            let hexpand = component.hexpand;
-            match hexpand {
-                Some(hexpand) => {
-                    event_box = event_box.hexpand(hexpand);
-                }
-                None => {}
+            if let Some(hexpand) = component.hexpand {
+                event_box = event_box.hexpand(hexpand);
             }
 
-            let vexpand = component.vexpand;
-            match vexpand {
-                Some(vexpand) => {
-                    event_box = event_box.vexpand(vexpand);
-                }
-                None => {}
+            if let Some(vexpand) = component.vexpand {
+                event_box = event_box.vexpand(vexpand);
             }
 
-            let halign = component.halign;
-            match halign {
-                Some(halign) => match halign {
+            if let Some(halign) = component.halign {
+                match halign {
                     Align::Start => {
                         event_box = event_box.halign(gtk::Align::Start);
                     }
@@ -118,19 +95,15 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
                     Align::Baseline => {
                         event_box = event_box.halign(gtk::Align::Baseline);
                     }
-                },
-                None => {}
+                }
             }
 
             let event_box = event_box.build();
-            match component.children {
-                Some(children) => {
-                    for child in children {
-                        let child_widget = elem_to_gtk_widget(child);
-                        event_box.append(&child_widget);
-                    }
+            if let Some(children) = component.children {
+                for child in children {
+                    let child_widget = elem_to_gtk_widget(child);
+                    event_box.append(&child_widget);
                 }
-                None => {}
             }
 
             event_box.connect_notify(Some("click"), move |_, _| {
@@ -144,32 +117,20 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
             let mut button = gtk::Button::builder();
             button = button.css_name(component.id);
             button = button.css_classes(component.classes);
-            match component.text {
-                Some(text) => {
-                    button = button.label(text);
-                }
-                None => {}
+            if let Some(text) = component.text {
+                button = button.label(text);
             }
 
-            let hexpand = component.hexpand;
-            match hexpand {
-                Some(hexpand) => {
-                    button = button.hexpand(hexpand);
-                }
-                None => {}
+            if let Some(hexpand) = component.hexpand {
+                button = button.hexpand(hexpand);
             }
 
-            let vexpand = component.vexpand;
-            match vexpand {
-                Some(vexpand) => {
-                    button = button.vexpand(vexpand);
-                }
-                None => {}
+            if let Some(vexpand) = component.vexpand {
+                button = button.vexpand(vexpand);
             }
 
-            let halign = component.halign;
-            match halign {
-                Some(halign) => match halign {
+            if let Some(halign) = component.halign {
+                match halign {
                     Align::Start => {
                         button = button.halign(gtk::Align::Start);
                     }
@@ -185,8 +146,7 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
                     Align::Baseline => {
                         button = button.halign(gtk::Align::Baseline);
                     }
-                },
-                None => {}
+                }
             }
 
             let button = button.build();
@@ -196,32 +156,20 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
             let mut label = gtk::Label::builder();
             label = label.css_name(component.id);
             label = label.css_classes(component.classes);
-            match component.text {
-                Some(text) => {
-                    label = label.label(text);
-                }
-                None => {}
+            if let Some(text) = component.text {
+                label = label.label(text);
             }
 
-            let hexpand = component.hexpand;
-            match hexpand {
-                Some(hexpand) => {
-                    label = label.hexpand(hexpand);
-                }
-                None => {}
+            if let Some(hexpand) = component.hexpand {
+                label = label.hexpand(hexpand);
             }
 
-            let vexpand = component.vexpand;
-            match vexpand {
-                Some(vexpand) => {
-                    label = label.vexpand(vexpand);
-                }
-                None => {}
+            if let Some(vexpand) = component.vexpand {
+                label = label.vexpand(vexpand);
             }
 
-            let halign = component.halign;
-            match halign {
-                Some(halign) => match halign {
+            if let Some(halign) = component.halign {
+                match halign {
                     Align::Start => {
                         label = label.halign(gtk::Align::Start);
                     }
@@ -237,24 +185,17 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
                     Align::Baseline => {
                         label = label.halign(gtk::Align::Baseline);
                     }
-                },
-                None => {}
+                }
             }
 
-            match component.wrap {
-                Some(wrap) => {
-                    label = label.wrap(wrap);
-                }
-                None => {}
+            if let Some(wrap) = component.wrap {
+                label = label.wrap(wrap);
             }
 
-            match component.ellipsize {
-                Some(ellipsize) => {
-                    if ellipsize {
-                        label = label.ellipsize(gtk::pango::EllipsizeMode::End);
-                    }
+            if let Some(ellipsize) = component.ellipsize {
+                if ellipsize {
+                    label = label.ellipsize(gtk::pango::EllipsizeMode::End);
                 }
-                None => {}
             }
 
             let label = label.build();
@@ -266,32 +207,20 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
             image = image.css_name(component.id);
             image = image.css_classes(component.classes);
 
-            match component.image_path {
-                Some(image_path) => {
-                    image = image.file(image_path);
-                }
-                None => {}
+            if let Some(image_path) = component.image_path {
+                image = image.file(image_path);
             }
 
-            let hexpand = component.hexpand;
-            match hexpand {
-                Some(hexpand) => {
-                    image = image.hexpand(hexpand);
-                }
-                None => {}
+            if let Some(hexpand) = component.hexpand {
+                image = image.hexpand(hexpand);
             }
 
-            let vexpand = component.vexpand;
-            match vexpand {
-                Some(vexpand) => {
-                    image = image.vexpand(vexpand);
-                }
-                None => {}
+            if let Some(vexpand) = component.vexpand {
+                image = image.vexpand(vexpand);
             }
 
-            let halign = component.halign;
-            match halign {
-                Some(halign) => match halign {
+            if let Some(halign) = component.halign {
+                match halign {
                     Align::Start => {
                         image = image.halign(gtk::Align::Start);
                     }
@@ -307,8 +236,7 @@ pub fn elem_to_gtk_widget(component: Element) -> gtk::Widget {
                     Align::Baseline => {
                         image = image.halign(gtk::Align::Baseline);
                     }
-                },
-                None => {}
+                }
             }
 
             let image = image.build();
@@ -322,7 +250,7 @@ pub fn execute_plugin(
     plugin: &PluginConfig,
     input: String,
 ) -> (Option<gtk::Box>, Option<Act>, Option<String>) {
-    let cmd_to_exec = &*plugin.cmd.as_str();
+    let cmd_to_exec = plugin.cmd.as_str();
     if cmd_to_exec.is_empty() {
         return (None, None, None);
     }
@@ -333,11 +261,11 @@ pub fn execute_plugin(
         let script_name = cmd_to_exec.replace("@script:", "");
         let scripts_dir = get_scripts_dir();
 
-        if scripts_dir.len() == 0 {
+        if scripts_dir.is_empty() {
             return (None, None, None);
         }
 
-        cmd_path = String::from(format!("{}/{}", scripts_dir, script_name));
+        cmd_path = format!("{}/{}", scripts_dir, script_name);
     }
 
     let output = std::process::Command::new(cmd_path)
@@ -355,7 +283,7 @@ pub fn execute_plugin(
     match output {
         Ok(output) => {
             let mut elements = Vec::new();
-            if output.elements.len() == 0 {
+            if output.elements.is_empty() {
                 return (None, None, None);
             }
             for element in output.elements {
@@ -392,32 +320,16 @@ pub fn execute_plugin(
             let action = output.action;
             match action {
                 Some(action) => match action.action {
-                    Act::Exit => {
-                        return (Some(section), Some(Act::Exit), None);
-                    }
-                    Act::Open(s) => {
-                        return (Some(section), Some(Act::Open(s)), icon);
-                    }
-                    Act::Copy(s) => {
-                        return (Some(section), Some(Act::Copy(s)), icon);
-                    }
-                    Act::Launch(s) => {
-                        return (Some(section), Some(Act::Launch(s)), icon);
-                    }
-                    Act::RunCmd(s) => {
-                        return (Some(section), Some(Act::RunCmd(s)), icon);
-                    }
-                    Act::RunScript(s) => {
-                        return (Some(section), Some(Act::RunScript(s)), icon);
-                    }
+                    Act::Exit => (Some(section), Some(Act::Exit), None),
+                    Act::Open(s) => (Some(section), Some(Act::Open(s)), icon),
+                    Act::Copy(s) => (Some(section), Some(Act::Copy(s)), icon),
+                    Act::Launch(s) => (Some(section), Some(Act::Launch(s)), icon),
+                    Act::RunCmd(s) => (Some(section), Some(Act::RunCmd(s)), icon),
+                    Act::RunScript(s) => (Some(section), Some(Act::RunScript(s)), icon),
                 },
-                None => {
-                    return (Some(section), None, icon);
-                }
-            };
+                None => (Some(section), None, icon),
+            }
         }
-        Err(_) => {
-            return (None, None, None);
-        }
+        Err(_) => (None, None, None),
     }
 }

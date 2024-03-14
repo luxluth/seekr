@@ -1,15 +1,9 @@
 use crate::plugin::execute_plugin;
-use crate::utils;
 use crate::utils::{get_section_title, wrap_section};
 use exmex::ExError;
+use fsearch_core::PluginConfig;
 use relm4::gtk;
 use relm4::gtk::prelude::*;
-
-// path things
-use std::fs;
-use std::path::PathBuf;
-
-use fsearch_core::PluginConfig;
 
 const INNER_COMMANDS: [&str; 4] = [
     "exit", // exit the program
@@ -52,7 +46,6 @@ pub fn exec(input: String, plugins: &Plug) -> Result {
         InputType::Mathematical => mathematical(input),
         InputType::Url => url(input),
         InputType::Command(cmd) => command(cmd.as_str(), input, plugins),
-        InputType::File(file) => f(file),
     }
 }
 
@@ -63,7 +56,7 @@ fn search(input: String, plugins: &Plug) -> Result {
         .css_name("SearchPrefix")
         .focusable(false)
         .halign(gtk::Align::Start)
-        .label(format!("Searching for "))
+        .label("Searching for ".to_string())
         .build();
 
     let search_query = gtk::Label::builder()
@@ -92,22 +85,19 @@ fn search(input: String, plugins: &Plug) -> Result {
     let mut action = None;
 
     for plugin in plugins {
-        match plugin.run_on_any_query {
-            Some(run_on_any_query) => {
-                if run_on_any_query {
-                    let (comp, plug_action, set_icon) = execute_plugin(plugin, input.clone());
-                    if comp.is_some() {
-                        components.push(comp.unwrap());
-                    }
-                    if plug_action.is_some() {
-                        action = plug_action;
-                    }
-                    if set_icon.is_some() {
-                        icon = set_icon;
-                    }
+        if let Some(roaq) = plugin.run_on_any_query {
+            if roaq {
+                let (comp, plug_action, set_icon) = execute_plugin(plugin, input.clone());
+                if let Some(comp) = comp {
+                    components.push(comp);
+                }
+                if plug_action.is_some() {
+                    action = plug_action;
+                }
+                if set_icon.is_some() {
+                    icon = set_icon;
                 }
             }
-            None => {}
         }
     }
 
@@ -130,12 +120,8 @@ fn mathematical(input: String) -> Result {
     }
     let result = exmex::eval_str::<f64>(&input);
     match result {
-        Ok(result) => {
-            return mathematical_result(input, result);
-        }
-        Err(e) => {
-            return mathematical_error(input, e);
-        }
+        Ok(result) => mathematical_result(input, result),
+        Err(e) => mathematical_error(input, e),
     }
 }
 
@@ -185,6 +171,7 @@ fn mathematical_error(input: String, err: ExError) -> Result {
         .wrap(true)
         .css_classes(vec!["error"])
         .hexpand(true)
+        .wrap(true)
         .halign(gtk::Align::Start)
         .label(format!("{}", err))
         .build();
@@ -292,7 +279,7 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
                 .css_classes(vec!["help"])
                 .hexpand(true)
                 .halign(gtk::Align::Start)
-                .label(format!("{}", HELP))
+                .label(HELP.to_string())
                 .build();
 
             let plugin_title = get_section_title("Plugins".to_string());
@@ -351,314 +338,21 @@ fn command(cmd: &str, input: String, plugins: &Plug) -> Result {
     }
 }
 
-fn expand_tilde(path: String) -> String {
-    if path.starts_with("~") {
-        match std::env::var("HOME") {
-            Ok(home) => {
-                return path.replace("~", home.as_str());
-            }
-            Err(_) => {
-                return path;
-            }
-        }
-    }
-    path
-}
-
-fn f(file: String) -> Result {
-    // find in the file system
-    let mut components: Vec<gtk::Box> = Vec::new();
-    let title = get_section_title("File".to_string());
-    let file = expand_tilde(file);
-    // check if the file exists
-    let path = PathBuf::from(file.clone());
-    if !path.exists() {
-        let content = gtk::Label::builder()
-            .name("Content")
-            .css_name("Content")
-            .wrap(true)
-            .css_classes(vec!["file"])
-            .hexpand(true)
-            .halign(gtk::Align::Start)
-            .label(format!("{} does not exist.", file))
-            .css_classes(vec!["error"])
-            .build();
-
-        let box_content = gtk::Box::builder()
-            .name("BoxContent")
-            .css_name("BoxContent")
-            .orientation(gtk::Orientation::Vertical)
-            .build();
-
-        box_content.append(&title);
-        box_content.append(&content);
-
-        components.push(wrap_section(box_content));
-
-        return Result {
-            action: None,
-            data: file,
-            components,
-            icon: None,
-        };
-    }
-
-    // check if the file is a directory
-    let metadata = fs::metadata(path.clone());
-    match metadata {
-        Ok(meta) => {
-            // is directory -> directory_path size last_modified
-            if meta.is_dir() {
-                let directory_name = gtk::Label::builder()
-                    .name("DirectoryName")
-                    .css_name("DirectoryName")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(format!("{}", path.display().to_string()))
-                    .build();
-
-                let directory_size = gtk::Label::builder()
-                    .name("DirectorySize")
-                    .css_name("DirectorySize")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(utils::format_size(meta.len()))
-                    .build();
-
-                let directory_last_modified = gtk::Label::builder()
-                    .name("DirectoryLastModified")
-                    .css_name("DirectoryLastModified")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(utils::systemtime_strftime(meta.modified().unwrap()))
-                    .build();
-
-                let box_dir = gtk::Box::builder()
-                    .name("BoxContentElement")
-                    .css_name("BoxContentElement")
-                    .css_classes(vec!["fileContainer"])
-                    .orientation(gtk::Orientation::Horizontal)
-                    .build();
-
-                box_dir.append(&directory_name);
-                box_dir.append(&directory_size);
-                box_dir.append(&directory_last_modified);
-
-                let box_content = gtk::Box::builder()
-                    .name("BoxContent")
-                    .css_name("BoxContent")
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-
-                box_content.append(&title);
-                box_content.append(&box_dir);
-
-                components.push(wrap_section(box_content));
-
-                return Result {
-                    action: None,
-                    data: file,
-                    components,
-                    icon: None,
-                };
-            }
-            // is file -> file_name size file_type last_modified
-            else if meta.is_file() {
-                let file_name = gtk::Label::builder()
-                    .name("FileName")
-                    .css_name("FileName")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(format!("{}", path.file_name().unwrap().to_str().unwrap()))
-                    .build();
-
-                let file_size = gtk::Label::builder()
-                    .name("FileSize")
-                    .css_name("FileSize")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(utils::format_size(meta.len()))
-                    .build();
-
-                let file_type = gtk::Label::builder()
-                    .name("FileType")
-                    .css_name("FileType")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(format!("{:?}", meta.file_type()))
-                    .build();
-
-                let last_modified = gtk::Label::builder()
-                    .name("LastModified")
-                    .css_name("LastModified")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(utils::systemtime_strftime(meta.modified().unwrap()))
-                    .build();
-
-                let box_file = gtk::Box::builder()
-                    .name("BoxContentElement")
-                    .css_name("BoxContentElement")
-                    .css_classes(vec!["fileContainer"])
-                    .orientation(gtk::Orientation::Horizontal)
-                    .build();
-
-                box_file.append(&file_name);
-                box_file.append(&file_size);
-                box_file.append(&file_type);
-                box_file.append(&last_modified);
-
-                let box_content = gtk::Box::builder()
-                    .name("BoxContent")
-                    .css_name("BoxContent")
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-
-                box_content.append(&title);
-                box_content.append(&box_file);
-
-                components.push(wrap_section(box_content));
-
-                return Result {
-                    action: None,
-                    data: file,
-                    components,
-                    icon: None,
-                };
-            }
-            // is symlink -> symlink_name size file_type last_modified
-            else if meta.is_symlink() {
-                let symlink_name = gtk::Label::builder()
-                    .name("SymlinkName")
-                    .css_name("SymlinkName")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(format!("{}", path.file_name().unwrap().to_str().unwrap()))
-                    .build();
-
-                let symlink_size = gtk::Label::builder()
-                    .name("SymlinkSize")
-                    .css_name("SymlinkSize")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(utils::format_size(meta.len()))
-                    .build();
-
-                let symlink_type = gtk::Label::builder()
-                    .name("SymlinkType")
-                    .css_name("SymlinkType")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(format!("{:?}", meta.file_type()))
-                    .build();
-
-                let last_modified = gtk::Label::builder()
-                    .name("LastModified")
-                    .css_name("LastModified")
-                    .css_classes(vec!["fileElement"])
-                    .hexpand(true)
-                    .halign(gtk::Align::Start)
-                    .label(utils::systemtime_strftime(meta.modified().unwrap()))
-                    .build();
-
-                let box_symlink = gtk::Box::builder()
-                    .name("BoxContentElement")
-                    .css_name("BoxContentElement")
-                    .css_classes(vec!["fileContainer"])
-                    .orientation(gtk::Orientation::Horizontal)
-                    .build();
-
-                box_symlink.append(&symlink_name);
-                box_symlink.append(&symlink_size);
-                box_symlink.append(&symlink_type);
-                box_symlink.append(&last_modified);
-
-                let box_content = gtk::Box::builder()
-                    .name("BoxContent")
-                    .css_name("BoxContent")
-                    .orientation(gtk::Orientation::Vertical)
-                    .build();
-
-                box_content.append(&title);
-                box_content.append(&box_symlink);
-
-                components.push(wrap_section(box_content));
-
-                return Result {
-                    action: None,
-                    data: file,
-                    components,
-                    icon: None,
-                };
-            } else {
-                return Result {
-                    action: None,
-                    data: file,
-                    components,
-                    icon: None,
-                };
-            }
-        }
-        Err(_) => {
-            let content = gtk::Label::builder()
-                .name("Content")
-                .css_name("Content")
-                .wrap(true)
-                .css_classes(vec!["file"])
-                .hexpand(true)
-                .halign(gtk::Align::Start)
-                .label(format!("Cannot get metadata of {}", file))
-                .build();
-            let box_content = gtk::Box::builder()
-                .name("BoxContent")
-                .css_name("BoxContent")
-                .orientation(gtk::Orientation::Vertical)
-                .build();
-
-            box_content.append(&title);
-            box_content.append(&content);
-
-            components.push(wrap_section(box_content));
-
-            return Result {
-                action: None,
-                data: file,
-                components,
-                icon: None,
-            };
-        }
-    }
-}
-
 #[derive(Debug)]
 enum InputType {
     Search,
     Mathematical,
     Url,
     Command(String),
-    File(String),
 }
 
 fn detect_input_type(input: &str) -> InputType {
-    if input.starts_with("file://") {
-        return InputType::File(input[7..].to_string());
-    }
     if input.starts_with("http://") || input.starts_with("https://") {
         return InputType::Url;
     }
-    if input.starts_with("@") {
-        let command = input[1..].to_string();
-        let mut split = command.split(" ");
+    if input.starts_with('@') {
+        let (_, command) = input.split_once('@').unwrap();
+        let mut split = command.split(' ');
         let cmd = split.next().unwrap();
         if INNER_COMMANDS.contains(&cmd) {
             return InputType::Command(cmd.to_string());
@@ -666,11 +360,7 @@ fn detect_input_type(input: &str) -> InputType {
         return InputType::Search;
     }
     match exmex::eval_str::<f64>(input) {
-        Ok(_) => {
-            return InputType::Mathematical;
-        }
-        Err(_) => {
-            return InputType::Search;
-        }
+        Ok(_) => InputType::Mathematical,
+        Err(_) => InputType::Search,
     }
 }
