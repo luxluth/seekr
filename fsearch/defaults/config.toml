@@ -1,8 +1,0 @@
-[look]
-initial_width = 800
-disable_tip = true
-input_placeholder = "何かを検索する"
-
-[network]
-port = 8080
-host = "localhost"

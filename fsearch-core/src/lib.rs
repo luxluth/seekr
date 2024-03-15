@@ -3,12 +3,8 @@ use std::env;
 use std::path::PathBuf;
 
 /// Get a text file content as a string
-fn get_file_content(path: &PathBuf) -> String {
-    let content = std::fs::read_to_string(path);
-    match content {
-        Ok(c) => c,
-        Err(_) => String::new(),
-    }
+fn get_file_content(path: &PathBuf) -> Result<String, std::io::Error> {
+    std::fs::read_to_string(path)
 }
 
 /// Get the CSS file content
@@ -16,7 +12,11 @@ pub fn get_css() -> String {
     match env::var("XDG_CONFIG_HOME") {
         Ok(v) => {
             let css_path = PathBuf::from(v).join("fsearch").join("style.css");
-            get_file_content(&css_path)
+            if let Ok(css) = get_file_content(&css_path) {
+                css
+            } else {
+                include_str!("../defaults/style.css").to_string()
+            }
         }
         Err(_) => match env::var("HOME") {
             Ok(v) => {
@@ -24,12 +24,13 @@ pub fn get_css() -> String {
                     .join(".config")
                     .join("fsearch")
                     .join("style.css");
-                get_file_content(&css_path)
+                if let Ok(config) = get_file_content(&css_path) {
+                    config
+                } else {
+                    include_str!("../defaults/style.css").to_string()
+                }
             }
-            Err(_) => {
-                println!("Could not find config file.");
-                String::new()
-            }
+            Err(_) => include_str!("../defaults/style.css").to_string(),
         },
     }
 }
@@ -39,9 +40,12 @@ pub fn get_cfg() -> Option<Config> {
     match env::var("XDG_CONFIG_HOME") {
         Ok(v) => {
             let cfg_path = PathBuf::from(v).join("fsearch").join("config.toml");
-            let cfg_content = get_file_content(&cfg_path);
-            let cfg: Config = toml::from_str(&cfg_content).unwrap();
-            Some(cfg)
+            if let Ok(cfg_content) = get_file_content(&cfg_path) {
+                let cfg: Config = toml::from_str(&cfg_content).unwrap();
+                Some(cfg)
+            } else {
+                Some(toml::from_str(include_str!("../defaults/config.toml")).unwrap())
+            }
         }
         Err(_) => match env::var("HOME") {
             Ok(v) => {
@@ -49,14 +53,14 @@ pub fn get_cfg() -> Option<Config> {
                     .join(".config")
                     .join("fsearch")
                     .join("config.toml");
-                let cfg_content = get_file_content(&cfg_path);
-                let cfg: Config = toml::from_str(&cfg_content).unwrap();
-                Some(cfg)
+                if let Ok(cfg_content) = get_file_content(&cfg_path) {
+                    let cfg: Config = toml::from_str(&cfg_content).unwrap();
+                    Some(cfg)
+                } else {
+                    Some(toml::from_str(include_str!("../defaults/config.toml")).unwrap())
+                }
             }
-            Err(_) => {
-                println!("Could not find config file.");
-                None
-            }
+            Err(_) => Some(toml::from_str(include_str!("../defaults/config.toml")).unwrap()),
         },
     }
 }
@@ -80,7 +84,7 @@ fn has_plugins() -> (bool, Option<PathBuf>) {
                 (plugins_exist, Some(plugins_path))
             }
             Err(_) => {
-                println!("Could not find config file.");
+                println!("Could not determine the plugin directory");
                 (false, None)
             }
         },
@@ -102,9 +106,10 @@ pub fn get_plugins() -> Vec<PluginConfig> {
                     let path = entry.path();
                     let file_name = path.file_name().unwrap().to_str().unwrap();
                     if file_name.ends_with(".toml") {
-                        let plugin_content = get_file_content(&path);
-                        let plugin: PluginConfig = toml::from_str(&plugin_content).unwrap();
-                        plugins.push(plugin);
+                        if let Ok(plugin_content) = get_file_content(&path) {
+                            let plugin: PluginConfig = toml::from_str(&plugin_content).unwrap();
+                            plugins.push(plugin);
+                        }
                     }
                 }
                 plugins
@@ -147,7 +152,7 @@ pub fn get_scripts_dir() -> String {
                     .to_string();
             }
             Err(_) => {
-                println!("Could not find config file.");
+                println!("Could not determine the script directory");
             }
         },
     }

@@ -1,0 +1,4 @@
+[look]
+initial_width = 800
+disable_tip = true
+input_placeholder = "Type to search..."
