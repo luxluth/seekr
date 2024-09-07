@@ -1,3 +1,0 @@
-name = "ls"
-description = "List files and directories in the current directory"
-cmd = "~/.config/fsearch/scripts/ls.py"
