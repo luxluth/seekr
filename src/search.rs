@@ -6,11 +6,13 @@ use std::sync::mpsc::{self, Receiver, Sender};
 pub enum SearchEvent {
     Term(String),
     Represent,
+    RequestClose,
 }
 
 pub enum ManagerEvent {
     DisplayEntries((Vec<app::AppEntry>, String)),
     Clear,
+    Close,
 }
 
 pub struct SearchManager {
@@ -70,6 +72,9 @@ impl SearchManager {
                         }
                     }
                     SearchEvent::Represent => self.entries = app::collect_apps(),
+                    SearchEvent::RequestClose => {
+                        let _ = self.outsender.send(ManagerEvent::Close).await;
+                    }
                 }
             }
         });

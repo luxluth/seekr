@@ -26,12 +26,13 @@ fn activate(app: &Application) {
     manager.manage();
 
     let represent_action = gtk::gio::SimpleAction::new("represent", None);
-    let to_manager_clone = tomanager.clone();
     represent_action.connect_activate(glib::clone!(
         #[weak]
         window,
+        #[strong]
+        tomanager,
         move |_, _| {
-            let _ = to_manager_clone.send(search::SearchEvent::Represent);
+            let _ = tomanager.send(search::SearchEvent::Represent);
             window.present();
         }
     ));
@@ -50,15 +51,19 @@ fn activate(app: &Application) {
         .placeholder_text("Search with Seekr")
         .build();
 
-    entry.connect_changed(move |e| {
-        let term = e.text().to_string();
-        if !term.is_empty() {
-            e.set_css_classes(&["has_input"])
-        } else {
-            e.set_css_classes(&[])
+    entry.connect_changed(glib::clone!(
+        #[strong]
+        tomanager,
+        move |e| {
+            let term = e.text().to_string();
+            if !term.is_empty() {
+                e.set_css_classes(&["has_input"])
+            } else {
+                e.set_css_classes(&[])
+            }
+            let _ = tomanager.send(search::SearchEvent::Term(term));
         }
-        let _ = tomanager.send(search::SearchEvent::Term(term));
-    });
+    ));
 
     input_continer.append(&entry);
 
@@ -95,6 +100,8 @@ fn activate(app: &Application) {
     let update_results = glib::clone!(
         #[strong]
         entries_result_box,
+        #[strong]
+        tomanager,
         move |entries: Vec<app::AppEntry>, term: String| {
             if !entries.is_empty() {
                 entries_result_box.set_css_classes(&["filled"]);
@@ -146,20 +153,32 @@ fn activate(app: &Application) {
                     }
                 ));
 
-                let en = entry.clone();
-                gesture.connect_released(move |gesture, _, _, _| {
-                    gesture.set_state(gtk::EventSequenceState::Claimed);
-                    en.launch(None, None);
-                });
-
-                let en = entry.clone();
-                key_controller.connect_key_pressed(move |_, key, _, _| match key {
-                    gtk::gdk::Key::Return | gtk::gdk::Key::space => {
-                        en.launch(None, None);
-                        gtk::glib::Propagation::Proceed
+                gesture.connect_released(glib::clone!(
+                    #[strong]
+                    entry,
+                    #[strong]
+                    tomanager,
+                    move |gesture, _, _, _| {
+                        gesture.set_state(gtk::EventSequenceState::Claimed);
+                        entry.launch(None, None);
+                        let _ = tomanager.send(search::SearchEvent::RequestClose);
                     }
-                    _ => gtk::glib::Propagation::Proceed,
-                });
+                ));
+
+                key_controller.connect_key_pressed(glib::clone!(
+                    #[strong]
+                    entry,
+                    #[strong]
+                    tomanager,
+                    move |_, key, _, _| match key {
+                        gtk::gdk::Key::Return | gtk::gdk::Key::space => {
+                            entry.launch(None, None);
+                            let _ = tomanager.send(search::SearchEvent::RequestClose);
+                            gtk::glib::Propagation::Proceed
+                        }
+                        _ => gtk::glib::Propagation::Proceed,
+                    }
+                ));
 
                 entry_button.add_controller(gesture);
                 entry_button.add_controller(key_controller);
@@ -214,6 +233,8 @@ fn activate(app: &Application) {
         }
     );
 
+    window.present();
+
     {
         glib::spawn_future_local(glib::clone!(async move {
             while let Ok(ev) = frommanager.recv().await {
@@ -222,12 +243,13 @@ fn activate(app: &Application) {
                         update_results(entries, term)
                     }
                     search::ManagerEvent::Clear => clear_results(),
+                    search::ManagerEvent::Close => {
+                        window.close();
+                    }
                 }
             }
         }));
     }
-
-    window.present();
 }
 
 fn load_css() {
