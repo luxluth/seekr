@@ -1,8 +1,14 @@
 window,
 input,
-inputBox {
-  background-color: #242424;
+inputBox,
+resultBox,
+entry {
+  background: #242424;
   color: #ffffff;
+}
+
+window {
+  padding: 2.5px;
 }
 
 inputBox {
@@ -15,6 +21,49 @@ input {
   font-size: 32px;
 }
 
+input.has_input {
+  border-bottom: 1px solid #303030;
+}
+
 input placeholder {
   opacity: 0.3;
+}
+
+entry {
+  margin: 10px;
+  margin-top: 2.5px;
+  margin-bottom: 2.5px;
+  padding: 5px;
+  background: #292929;
+  border-radius: 8px;
+  transition: background 0.1s ease-out;
+}
+
+entry:hover {
+  background: #303030;
+}
+
+entryIcon {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+entryName {
+  font-weight: bold;
+}
+
+entryDescription {
+  opacity: 0.5;
+  font-size: 0.875em;
+}
+
+tip {
+  font-weight: bold;
+  font-style: italic;
+  opacity: 0.7;
+  padding: 10px;
+}
+
+entryBoxResults.filled {
+  padding-bottom: 5px;
 }

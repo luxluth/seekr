@@ -18,3 +18,12 @@ gtk = { version = "0.9.1", package = "gtk4", features = ["v4_14"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 dbus = "0.9.7"
+freedesktop-desktop-entry = "0.7.5"
+fuzzy-matcher = "0.3.7"
+async-channel = "2.3.1"
+tokio = { version = "1.40.0", features = ["full"] }
+linicon = "2.3.0"
+
+[profile.release]
+lto = true
+codegen-units = 1

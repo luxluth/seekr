@@ -37,7 +37,7 @@ pub fn send_represent_event() {
             // try to send a signal to the app
             let proxy = conn.with_proxy(
                 APP_ID,
-                "/dev/luxluth/fsearch/window/1",
+                format!("/{}/window/1", APP_ID.replace('.', "/")),
                 Duration::from_millis(5000),
             );
 
