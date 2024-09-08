@@ -134,9 +134,6 @@ fn activate(app: &Application) {
                 let focus_controller = gtk::EventControllerFocus::new();
                 focus_controller.set_name(Some("gtk-box-focus-controller"));
 
-                let gesture = gtk::GestureClick::new();
-                let key_controller = gtk::EventControllerKey::new();
-
                 focus_controller.connect_enter(glib::clone!(
                     #[weak]
                     entry_button,
@@ -153,35 +150,17 @@ fn activate(app: &Application) {
                     }
                 ));
 
-                gesture.connect_released(glib::clone!(
+                entry_button.connect_clicked(glib::clone!(
                     #[strong]
                     entry,
                     #[strong]
                     tomanager,
-                    move |gesture, _, _, _| {
-                        gesture.set_state(gtk::EventSequenceState::Claimed);
+                    move |_| {
                         entry.launch(None, None);
                         let _ = tomanager.send(search::SearchEvent::RequestClose);
                     }
                 ));
 
-                key_controller.connect_key_pressed(glib::clone!(
-                    #[strong]
-                    entry,
-                    #[strong]
-                    tomanager,
-                    move |_, key, _, _| match key {
-                        gtk::gdk::Key::Return | gtk::gdk::Key::space => {
-                            entry.launch(None, None);
-                            let _ = tomanager.send(search::SearchEvent::RequestClose);
-                            gtk::glib::Propagation::Proceed
-                        }
-                        _ => gtk::glib::Propagation::Proceed,
-                    }
-                ));
-
-                entry_button.add_controller(gesture);
-                entry_button.add_controller(key_controller);
                 entry_button.add_controller(focus_controller);
                 entry_button.set_focusable(true);
 
