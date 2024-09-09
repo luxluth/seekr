@@ -1,6 +1,6 @@
+// use gtk::gdk_pixbuf::Pixbuf;
+use gtk::glib;
 use gtk::prelude::*;
-use gtk::Entry;
-use gtk::{glib, Box};
 use gtk::{Application, ApplicationWindow};
 use search::SearchManager;
 
@@ -8,7 +8,9 @@ mod app;
 mod bus;
 mod conf;
 mod icons;
+mod resources;
 mod search;
+mod ui;
 
 fn activate(app: &Application) {
     let window = ApplicationWindow::builder()
@@ -38,16 +40,29 @@ fn activate(app: &Application) {
     ));
     window.add_action(&represent_action);
 
-    let input_continer = Box::builder()
+    let input_container = gtk::Box::builder()
         .height_request(60)
         .hexpand(true)
+        .spacing(5)
         .css_name("inputBox")
         .name("inputBox")
         .build();
 
-    let entry = Entry::builder()
+    // let search_icon = include_str!("assets/search.svg").as_bytes();
+    // let cursor = gtk::gio::MemoryInputStream::from_bytes(&glib::Bytes::from(search_icon));
+    // let loader =
+    //     Pixbuf::from_stream_at_scale(&cursor, 48, 48, true, None::<&gtk::gio::Cancellable>)
+    //         .unwrap();
+    // let icon = gtk::gio::Icon::from(loader);
+    // let search_icon = gtk::Image::from_gicon(&icon);
+    // search_icon.set_css_classes(&["search_icon"]);
+    //
+    // input_container.append(&search_icon);
+
+    let entry = gtk::Entry::builder()
         .hexpand(true)
         .css_name("input")
+        .activates_default(true)
         .placeholder_text("Search with Seekr")
         .build();
 
@@ -65,9 +80,9 @@ fn activate(app: &Application) {
         }
     ));
 
-    input_continer.append(&entry);
+    input_container.append(&entry);
 
-    let shell = Box::builder()
+    let shell = gtk::Box::builder()
         .hexpand(true)
         .vexpand(false)
         .name("shell")
@@ -75,140 +90,133 @@ fn activate(app: &Application) {
         .orientation(gtk::Orientation::Vertical)
         .build();
 
-    let entries_result_box = Box::builder()
+    let scroll_container = gtk::ScrolledWindow::builder()
         .hexpand(true)
-        .name("entryBoxResults")
-        .orientation(gtk::Orientation::Vertical)
+        .vexpand(true)
+        .height_request(405)
+        .max_content_height(405)
+        .min_content_height(0)
         .css_name("resultBox")
         .build();
 
-    shell.append(&input_continer);
-    shell.append(&entries_result_box);
+    let result_box = gtk::Box::builder()
+        .hexpand(true)
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+
+    scroll_container.set_child(Some(&result_box));
+    #[allow(deprecated)]
+    scroll_container.hide();
+
+    shell.append(&input_container);
+    shell.append(&scroll_container);
     window.set_child(Some(&shell));
 
     let clear_results = glib::clone!(
         #[strong]
-        entries_result_box,
+        result_box,
+        #[strong]
+        scroll_container,
         move || {
-            while let Some(child) = entries_result_box.first_child() {
-                entries_result_box.remove(&child);
+            while let Some(child) = result_box.first_child() {
+                result_box.remove(&child);
             }
-            entries_result_box.set_css_classes(&[]);
+            result_box.set_css_classes(&[]);
+            #[allow(deprecated)]
+            scroll_container.hide();
         }
     );
 
-    let update_results = glib::clone!(
+    let show_math = glib::clone!(
         #[strong]
-        entries_result_box,
+        result_box,
         #[strong]
-        tomanager,
-        move |entries: Vec<app::AppEntry>, term: String| {
-            if !entries.is_empty() {
-                entries_result_box.set_css_classes(&["filled"]);
-            } else {
-                entries_result_box.set_css_classes(&[]);
-            }
-
-            let tip = gtk::Label::builder()
+        scroll_container,
+        move |res: f64| {
+            #[allow(deprecated)]
+            scroll_container.show();
+            let math_box = gtk::Box::builder()
+                .css_name("mathResult")
+                .hexpand(true)
+                .height_request(395)
+                .orientation(gtk::Orientation::Vertical)
+                .build();
+            let head_box = gtk::Box::builder()
+                .css_classes(["head"])
+                .hexpand(true)
+                .spacing(5)
+                .halign(gtk::Align::Center)
+                .build();
+            let title = gtk::Label::builder()
                 .hexpand(true)
                 .halign(gtk::Align::Start)
                 .ellipsize(gtk::pango::EllipsizeMode::End)
-                .css_name("tip")
                 .build();
 
             // TODO: localize
-            tip.set_label(&format!("search results for '{term}'"));
-            entries_result_box.append(&tip);
+            title.set_text("Expression evaluation");
+            let head_icon = gtk::Image::from_gicon(resources::DIVIDE_ICON.get());
+            head_icon.set_css_classes(&["search_icon"]);
+
+            head_box.append(&head_icon);
+            head_box.append(&title);
+
+            let answer_box = gtk::Box::builder()
+                .hexpand(true)
+                .vexpand(true)
+                .css_classes(["answer_box"])
+                .halign(gtk::Align::Center)
+                .valign(gtk::Align::Center)
+                .build();
+
+            let answer = gtk::Label::builder()
+                .css_classes(["answer"])
+                .halign(gtk::Align::Center)
+                .ellipsize(gtk::pango::EllipsizeMode::End)
+                .build();
+            answer.set_text(&format!("{res}"));
+            answer_box.append(&answer);
+
+            math_box.append(&head_box);
+            math_box.append(&answer_box);
+
+            result_box.append(&math_box);
+        }
+    );
+
+    let add_entries = glib::clone!(
+        #[strong]
+        result_box,
+        #[strong]
+        tomanager,
+        #[strong]
+        scroll_container,
+        move |entries: Vec<app::AppEntry>| {
+            let entries_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .spacing(2)
+                .build();
+            if !entries.is_empty() {
+                #[allow(deprecated)]
+                scroll_container.show();
+                let title = gtk::Label::builder()
+                    .hexpand(true)
+                    .halign(gtk::Align::Start)
+                    .ellipsize(gtk::pango::EllipsizeMode::End)
+                    .css_name("title")
+                    .build();
+
+                // TODO: localize
+                title.set_label(&format!("Applications"));
+                entries_box.append(&title);
+            }
 
             for entry in entries {
-                let entry_button = gtk::Button::builder()
-                    .vexpand(false)
-                    .hexpand(true)
-                    .can_focus(true)
-                    .focus_on_click(true)
-                    .sensitive(true)
-                    .css_name("entry")
-                    .name("Entry")
-                    .build();
-
-                let focus_controller = gtk::EventControllerFocus::new();
-                focus_controller.set_name(Some("gtk-box-focus-controller"));
-
-                focus_controller.connect_enter(glib::clone!(
-                    #[weak]
-                    entry_button,
-                    move |_| {
-                        entry_button.add_css_class("focused");
-                    }
-                ));
-
-                focus_controller.connect_leave(glib::clone!(
-                    #[weak]
-                    entry_button,
-                    move |_| {
-                        entry_button.remove_css_class("focused");
-                    }
-                ));
-
-                entry_button.connect_clicked(glib::clone!(
-                    #[strong]
-                    entry,
-                    #[strong]
-                    tomanager,
-                    move |_| {
-                        entry.launch(None, None);
-                        let _ = tomanager.send(search::SearchEvent::RequestClose);
-                    }
-                ));
-
-                entry_button.add_controller(focus_controller);
-                entry_button.set_focusable(true);
-
-                let icon_image = gtk::Image::builder().css_name("entryIcon").build();
-                icon_image.set_from_file(match icons::get_icon(&entry.icon) {
-                    Some(path) => Some(path),
-                    None => icons::get_icon("application-x-executable"),
-                });
-
-                let name = gtk::Label::builder()
-                    .css_name("entryName")
-                    .ellipsize(gtk::pango::EllipsizeMode::End)
-                    .halign(gtk::Align::Start)
-                    .build();
-                name.set_label(&entry.name);
-
-                let desc = gtk::Label::builder()
-                    .css_name("entryDescription")
-                    .halign(gtk::Align::Start)
-                    .ellipsize(gtk::pango::EllipsizeMode::End)
-                    .build();
-                desc.set_label(&entry.description);
-
-                let labels = gtk::Box::builder()
-                    .orientation(gtk::Orientation::Vertical)
-                    .hexpand(true)
-                    .valign(gtk::Align::Center)
-                    .halign(gtk::Align::Start)
-                    .css_name("entryLabels")
-                    .build();
-
-                labels.append(&name);
-                labels.append(&desc);
-
-                let content_box = gtk::Box::builder()
-                    .orientation(gtk::Orientation::Horizontal)
-                    .spacing(10)
-                    .hexpand(true)
-                    .valign(gtk::Align::Center)
-                    .halign(gtk::Align::Start)
-                    .build();
-                content_box.append(&icon_image);
-                content_box.append(&labels);
-
-                entry_button.set_child(Some(&content_box));
-
-                entries_result_box.append(&entry_button);
+                let button = ui::EntryButton(entry, &tomanager);
+                entries_box.append(&button);
             }
+
+            result_box.append(&entries_box);
         }
     );
 
@@ -218,9 +226,8 @@ fn activate(app: &Application) {
         glib::spawn_future_local(glib::clone!(async move {
             while let Ok(ev) = frommanager.recv().await {
                 match ev {
-                    search::ManagerEvent::DisplayEntries((entries, term)) => {
-                        update_results(entries, term)
-                    }
+                    search::ManagerEvent::DisplayEntries(entries) => add_entries(entries),
+                    search::ManagerEvent::Mathematic(res) => show_math(res),
                     search::ManagerEvent::Clear => clear_results(),
                     search::ManagerEvent::Close => {
                         window.close();

@@ -10,7 +10,8 @@ pub enum SearchEvent {
 }
 
 pub enum ManagerEvent {
-    DisplayEntries((Vec<app::AppEntry>, String)),
+    DisplayEntries(Vec<app::AppEntry>),
+    Mathematic(f64),
     Clear,
     Close,
 }
@@ -61,14 +62,24 @@ impl SearchManager {
                                 }
                             })
                             .collect();
-                        let top_5 = &entry_results[..5.min(entry_results.len())];
-                        if top_5.is_empty() {
-                            let _ = self.outsender.send(ManagerEvent::Clear).await;
+                        if let Ok(res) = exmex::eval_str::<f64>(&query) {
+                            let _ = self.outsender.send(ManagerEvent::Mathematic(res)).await;
+
+                            let top_1 = &entry_results[..1.min(entry_results.len())];
+                            if !top_1.is_empty() {
+                                let _ = self
+                                    .outsender
+                                    .send(ManagerEvent::DisplayEntries(top_1.to_vec()))
+                                    .await;
+                            }
                         } else {
-                            let _ = self
-                                .outsender
-                                .send(ManagerEvent::DisplayEntries((top_5.to_vec(), query)))
-                                .await;
+                            let top_5 = &entry_results[..10.min(entry_results.len())];
+                            if !top_5.is_empty() {
+                                let _ = self
+                                    .outsender
+                                    .send(ManagerEvent::DisplayEntries(top_5.to_vec()))
+                                    .await;
+                            }
                         }
                     }
                     SearchEvent::Represent => self.entries = app::collect_apps(),

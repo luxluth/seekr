@@ -23,6 +23,8 @@ fuzzy-matcher = "0.3.7"
 async-channel = "2.3.1"
 tokio = { version = "1.40.0", features = ["full"] }
 linicon = "2.3.0"
+lazy_static = "1.5.0"
+fragile = "2.0.0"
 
 [profile.release]
 lto = true

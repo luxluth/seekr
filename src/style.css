@@ -16,6 +16,12 @@ inputBox {
   padding-left: 10px;
 }
 
+inputBox .search_icon {
+  opacity: 0.5;
+  min-width: 48px;
+  min-height: 48px;
+}
+
 input {
   caret-color: #ffffff;
   font-size: 32px;
@@ -57,6 +63,12 @@ entryDescription {
   font-size: 0.875em;
 }
 
+title {
+  font-weight: bold;
+  font-size: 1.5em;
+  padding: 10px;
+}
+
 tip {
   font-weight: bold;
   font-style: italic;
@@ -64,6 +76,26 @@ tip {
   padding: 10px;
 }
 
-entryBoxResults.filled {
-  padding-bottom: 5px;
+mathResult {
+  background-color: #303030;
+  border-radius: 8px;
+  padding: 5px;
+}
+
+mathResult .head {
+  opacity: 0.5;
+  font-weight: bold;
+}
+
+mathResult .answer_box {
+  padding: 10px;
+}
+
+mathResult .answer_box .answer {
+  font-size: 48px;
+  font-weight: bold;
+}
+
+resultBox {
+  padding: 5px;
 }
