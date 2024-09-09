@@ -1,10 +1,12 @@
 <div align="center">
     
-# fsearch
+# seekr
 
-*A spotlight like search util for linux*
+_A spotlight like search util for linux_
 
 </div>
+
+![seekr-demo](./assets/seekr-demo.gif)
 
 > [!NOTE]
 > In development...
