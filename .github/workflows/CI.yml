@@ -2,31 +2,29 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["master"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest 
+      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions-rs/toolchain@v1
-      with:
-        profile: minimal
-        toolchain: stable
-    - name: Additional deps
-      run: sudo dnf install -y gtk4-devel dbus dbus-devel pkgconf-pkg-config
-    - name: Build
-      run: cargo build --release
-    - name: Test
-      run: cargo test
-    - uses: actions/upload-artifact@v3
-      with:
-        name: fsearch
-        path: target/release/fsearch
-        retention-days: 5
-
-
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+      - name: Additional deps
+        run: sudo dnf install -y gtk4-devel dbus dbus-devel pkgconf-pkg-config
+      - name: Build
+        run: cargo build --release
+      - name: Test
+        run: cargo test
+      - uses: actions/upload-artifact@v3
+        with:
+          name: fsearch
+          path: target/release/fsearch
+          retention-days: 5
