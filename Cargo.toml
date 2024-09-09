@@ -22,7 +22,7 @@ freedesktop-desktop-entry = "0.7.5"
 fuzzy-matcher = "0.3.7"
 async-channel = "2.3.1"
 tokio = { version = "1.40.0", features = ["full"] }
-linicon = "2.3.0"
+linicon = {version = "2.3.0", features = ["expand-paths"] }
 lazy_static = "1.5.0"
 fragile = "2.0.0"
 
