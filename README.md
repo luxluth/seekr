@@ -2,7 +2,7 @@
     
 # seekr
 
-_A spotlight like search util for linux_
+_System search util for linux_
 
 </div>
 
