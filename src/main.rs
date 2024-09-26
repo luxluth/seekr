@@ -22,6 +22,12 @@ fn activate(app: &Application) {
         .hide_on_close(true)
         .build();
 
+    if let Ok(xdg_current_desktop) = std::env::var("XDG_CURRENT_DESKTOP") {
+        if xdg_current_desktop.to_lowercase() == "gnome" {
+            window.add_css_class("gnome");
+        }
+    }
+
     window.set_default_size(600, -1);
 
     let (manager, (tomanager, frommanager)) = SearchManager::new();

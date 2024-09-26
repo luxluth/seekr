@@ -11,6 +11,11 @@ window {
   padding: 2.5px;
 }
 
+window.gnome {
+  border: 2px solid #333333;
+  border-radius: 12px;
+}
+
 inputBox {
   padding-right: 10px;
   padding-left: 10px;
