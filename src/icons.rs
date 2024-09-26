@@ -13,7 +13,7 @@ pub fn get_icon(name: &str) -> Option<PathBuf> {
     let icons: Vec<_> = lookup_icon(name)
         .with_scale(1)
         .with_size(48)
-        .with_search_paths(&["~/.local/share/icons"])
+        .with_search_paths(&["~/.local/share/icons/"])
         .unwrap()
         .filter_map(|x| match x {
             Ok(i) => Some(i.path),
