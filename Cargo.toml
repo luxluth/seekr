@@ -14,7 +14,7 @@ authors = ["luxluth <delphin.blehoussi93@gmail.com>"]
 
 [dependencies]
 exmex = "0.20.3"
-gtk = { version = "0.9.1", package = "gtk4", features = ["v4_16"] }
+gtk = { version = "0.9.1", package = "gtk4", features = ["v4_14"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 dbus = "0.9.7"
