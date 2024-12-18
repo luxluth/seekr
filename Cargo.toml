@@ -20,10 +20,10 @@ freedesktop-desktop-entry = "0.7.5"
 fuzzy-matcher = "0.3.7"
 async-channel = "2.3.1"
 tokio = { version = "1.42.0", features = ["rt", "rt-multi-thread", "sync"] }
-lazy_static = "1.5.0"
 fragile = "2.0.0"
 ini-roundtrip = "0.2.0"
 rust-i18n = "3.1.2"
+once_cell = "1.20.2"
 
 [[bin]]
 name = "seekr"

@@ -2,8 +2,7 @@ use crate::app::AppEntry;
 use crate::conf::Config;
 use crate::icons;
 use crate::search::{self, SearchEvent};
-use gtk::glib;
-use gtk::prelude::*;
+use gtk::{glib, prelude::*};
 use std::sync::mpsc::Sender;
 
 #[allow(non_snake_case)]

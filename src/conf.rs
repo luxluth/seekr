@@ -1,5 +1,6 @@
 use rust_i18n::t;
 use std::{
+    collections::HashMap,
     io::{Read, Write},
     path::PathBuf,
 };
@@ -9,6 +10,9 @@ pub const APP_ID: &str = "dev.luxluth.seekr";
 pub const DEFAULT_CONFIG: &str = include_str!("./default.conf");
 
 pub const DEFAULT_CSS: &str = include_str!("./style.css");
+
+#[derive(Clone, Debug)]
+pub struct MacroDef(pub String);
 
 #[derive(Clone, Debug)]
 pub struct GeneralConf {
@@ -29,19 +33,24 @@ impl Default for GeneralConf {
     }
 }
 
+pub type MacroMap = HashMap<String, MacroDef>;
+
 #[derive(Default, Clone, Debug)]
 pub struct Config {
     pub general: GeneralConf,
     pub css: String,
+    pub macros: MacroMap,
 }
 
 impl Config {
-    pub fn get_conf(conf_path: &PathBuf) -> GeneralConf {
+    pub fn get_conf(conf_path: &PathBuf) -> (GeneralConf, MacroMap) {
         let mut general = GeneralConf::default();
+        let mut macros: MacroMap = MacroMap::new();
         if let Ok(mut f) = std::fs::File::open(conf_path) {
             let mut data = String::new();
             let _ = f.read_to_string(&mut data);
             let mut is_in_general = false;
+            let mut is_in_macros = false;
 
             for (line, item) in ini_roundtrip::Parser::new(&data).enumerate() {
                 match item {
@@ -52,6 +61,10 @@ impl Config {
                         name: "general", ..
                     } => {
                         is_in_general = true;
+                    }
+                    ini_roundtrip::Item::Section { name: "macros", .. } => {
+                        is_in_general = false;
+                        is_in_macros = true;
                     }
                     ini_roundtrip::Item::Property {
                         key: "theme", val, ..
@@ -90,11 +103,18 @@ impl Config {
                             general.search_placeholder = val.unwrap().to_string();
                         }
                     }
+
+                    ini_roundtrip::Item::Property { key, val, .. } => {
+                        if is_in_macros && val.is_some() {
+                            let r#macro = MacroDef(val.unwrap().to_string());
+                            macros.insert(key.to_string(), r#macro);
+                        }
+                    }
                     _ => {}
                 }
             }
         }
-        return general;
+        return (general, macros);
     }
 
     pub fn parse(path: std::path::PathBuf) -> Self {
@@ -111,9 +131,13 @@ impl Config {
             }
         }
 
+        let (general, macros) = Self::get_conf(&path);
+        debug!("Loaded macros .... {:#?}", macros);
+
         return Self {
-            general: Self::get_conf(&path),
+            general,
             css,
+            macros,
         };
     }
 }

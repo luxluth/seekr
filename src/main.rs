@@ -1,9 +1,13 @@
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
+
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
 use rust_i18n::t;
 use search::SearchManager;
 use tokio::runtime::Runtime;
+use ui::entry_button::EntryButton;
 
 mod app;
 mod bus;
@@ -15,6 +19,8 @@ mod search;
 mod ui;
 
 rust_i18n::i18n!("locales", fallback = "en");
+
+static IN_MACRO_MODE: AtomicBool = AtomicBool::new(false);
 
 fn activate(config: conf::Config, app: &Application) {
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
@@ -40,7 +46,7 @@ fn activate(config: conf::Config, app: &Application) {
     let (manager, (tomanager, frommanager)) = SearchManager::new();
     manager.manage();
 
-    let entry = gtk::Entry::builder()
+    let entry = gtk::Text::builder()
         .hexpand(true)
         .css_name("input")
         .activates_default(true)
@@ -63,25 +69,104 @@ fn activate(config: conf::Config, app: &Application) {
     let input_container = gtk::Box::builder()
         .height_request(60)
         .hexpand(true)
-        .spacing(5)
+        .spacing(10)
         .css_name("inputBox")
         .name("inputBox")
         .build();
 
-    entry.connect_changed(glib::clone!(
+    let macro_hint = gtk::Label::builder().css_name("macroHint").build();
+    macro_hint.set_visible(false);
+
+    entry.connect_activate(glib::clone!(
+        #[strong]
+        macro_hint,
+        #[strong]
+        config,
         #[strong]
         tomanager,
         move |e| {
-            let term = e.text().to_string();
-            if !term.is_empty() {
-                e.set_css_classes(&["has_input"])
-            } else {
-                e.set_css_classes(&[])
+            let entry = e.text().to_string();
+            if IN_MACRO_MODE.load(Ordering::Relaxed) {
+                if let Some(def) = config.macros.get(macro_hint.text().as_str()) {
+                    let shell_cmd = def.clone().0.replace("{ENTRY}", &entry);
+                    let _ = std::process::Command::new("sh")
+                        .arg("-c")
+                        .arg(shell_cmd)
+                        .spawn();
+
+                    e.set_text("");
+                    macro_hint.set_visible(false);
+                    IN_MACRO_MODE.store(false, Ordering::Relaxed);
+
+                    let _ = tomanager.send(search::SearchEvent::RequestClose);
+                }
             }
-            let _ = tomanager.send(search::SearchEvent::Term(term));
         }
     ));
 
+    entry.connect_backspace(glib::clone!(
+        #[strong]
+        macro_hint,
+        #[strong]
+        input_container,
+        move |e| if e.text().is_empty() && IN_MACRO_MODE.load(Ordering::Relaxed) {
+            macro_hint.set_visible(false);
+            macro_hint.set_text("");
+            input_container.set_css_classes(&[]);
+            IN_MACRO_MODE.store(false, Ordering::Relaxed);
+        }
+    ));
+
+    let mut suggestions = config
+        .macros
+        .keys()
+        .map(|m| format!("@{}", m.clone()))
+        .collect::<Vec<String>>();
+    suggestions.sort();
+    let suggestions = suggestions;
+
+    entry.connect_changed(glib::clone!(
+        #[strong]
+        tomanager,
+        #[strong]
+        macro_hint,
+        #[strong]
+        input_container,
+        move |e| {
+            let term = e.text().to_string();
+            if !term.is_empty() {
+                e.set_css_classes(&["has_input"]);
+                if !IN_MACRO_MODE.load(Ordering::Relaxed) {
+                    if let Some((t, _)) = term.split_once(' ') {
+                        if let Ok(match_idx) = suggestions.binary_search(&t.to_string()) {
+                            macro_hint.set_text(&suggestions[match_idx].clone().replace('@', ""));
+                            macro_hint.set_visible(true);
+                            IN_MACRO_MODE.store(true, Ordering::Relaxed);
+                            e.set_text("");
+                            input_container.set_css_classes(&["macro_mode"]);
+                        } else {
+                            macro_hint.set_visible(false);
+                            IN_MACRO_MODE.store(false, Ordering::Relaxed);
+                        }
+                    } else {
+                        macro_hint.set_visible(false);
+                        IN_MACRO_MODE.store(false, Ordering::Relaxed);
+                    }
+                }
+            } else {
+                if !IN_MACRO_MODE.load(Ordering::Relaxed) {
+                    macro_hint.set_visible(false);
+                    e.set_css_classes(&[]);
+                    IN_MACRO_MODE.store(false, Ordering::Relaxed);
+                }
+            }
+            if !IN_MACRO_MODE.load(Ordering::Relaxed) {
+                let _ = tomanager.send(search::SearchEvent::Term(term));
+            }
+        }
+    ));
+
+    input_container.append(&macro_hint);
     input_container.append(&entry);
 
     let shell = gtk::Box::builder()
@@ -107,8 +192,7 @@ fn activate(config: conf::Config, app: &Application) {
         .build();
 
     scroll_container.set_child(Some(&result_box));
-    #[allow(deprecated)]
-    scroll_container.hide();
+    scroll_container.set_visible(false);
 
     shell.append(&input_container);
     shell.append(&scroll_container);
@@ -124,8 +208,7 @@ fn activate(config: conf::Config, app: &Application) {
                 result_box.remove(&child);
             }
             result_box.set_css_classes(&[]);
-            #[allow(deprecated)]
-            scroll_container.hide();
+            scroll_container.set_visible(false);
         }
     );
 
@@ -135,8 +218,7 @@ fn activate(config: conf::Config, app: &Application) {
         #[strong]
         scroll_container,
         move |res: f64| {
-            #[allow(deprecated)]
-            scroll_container.show();
+            scroll_container.set_visible(true);
             let math_box = gtk::Box::builder()
                 .css_name("mathResult")
                 .hexpand(true)
@@ -201,8 +283,7 @@ fn activate(config: conf::Config, app: &Application) {
                 .spacing(2)
                 .build();
             if !entries.is_empty() {
-                #[allow(deprecated)]
-                scroll_container.show();
+                scroll_container.set_visible(true);
                 let title = gtk::Label::builder()
                     .hexpand(true)
                     .halign(gtk::Align::Start)
@@ -215,7 +296,7 @@ fn activate(config: conf::Config, app: &Application) {
             }
 
             for entry in entries {
-                let button = ui::EntryButton(&config, entry, &tomanager);
+                let button = EntryButton(&config, entry, &tomanager);
                 entries_box.append(&button);
             }
 
