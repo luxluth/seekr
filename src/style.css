@@ -19,6 +19,7 @@ window.gnome {
 inputBox {
   padding-right: 10px;
   padding-left: 10px;
+  transition: ease-in-out 0.25s all;
 }
 
 input {
@@ -97,4 +98,21 @@ mathResult .answer_box .answer {
 
 resultBox {
   padding: 5px;
+}
+
+inputBox.macro_mode {
+  padding-left: 2px;
+}
+
+macroHint {
+  margin-top: 2px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 30px;
+  text-transform: capitalize;
+  padding-left: 10px;
+  padding-right: 10px;
+  background-color: #fabb05;
+  color: #222222;
 }
