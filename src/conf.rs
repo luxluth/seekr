@@ -12,7 +12,30 @@ pub const DEFAULT_CONFIG: &str = include_str!("./default.conf");
 pub const DEFAULT_CSS: &str = include_str!("./style.css");
 
 #[derive(Clone, Debug)]
-pub struct MacroDef(pub String);
+pub struct MacroDef(pub MacroName, pub String);
+
+#[derive(Clone, Debug)]
+pub struct MacroName {
+    pub invoke_name: String,
+    pub display_name: String,
+}
+
+impl MacroName {
+    pub fn parse(macro_key: &str) -> Self {
+        if macro_key.contains('|') {
+            let (l, r) = macro_key.split_once('|').unwrap();
+            Self {
+                invoke_name: l.trim().to_string(),
+                display_name: r.trim().to_string(),
+            }
+        } else {
+            Self {
+                invoke_name: macro_key.trim().to_string(),
+                display_name: macro_key.trim().to_string(),
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct GeneralConf {
@@ -107,8 +130,10 @@ impl Config {
 
                     ini_roundtrip::Item::Property { key, val, .. } => {
                         if is_in_macros && val.is_some() {
-                            let r#macro = MacroDef(val.unwrap().to_string());
-                            macros.insert(key.to_string(), r#macro);
+                            let macro_name = MacroName::parse(&key);
+                            let invoke_name = macro_name.invoke_name.clone();
+                            let r#macro = MacroDef(macro_name, val.unwrap().to_string());
+                            macros.insert(invoke_name, r#macro);
                         }
                     }
                     _ => {}

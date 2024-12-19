@@ -1,6 +1,7 @@
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 
+use conf::MacroDef;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
@@ -88,9 +89,8 @@ fn activate(config: conf::Config, app: &Application) {
             let entry = e.text().to_string();
             if IN_MACRO_MODE.load(Ordering::Relaxed) {
                 if let Some(def) = config.macros.get(macro_hint.text().as_str()) {
-                    let shell_cmd = def
-                        .clone()
-                        .0
+                    let MacroDef(_, command) = def;
+                    let shell_cmd = command
                         .replace("{ENTRY}", &entry)
                         .replace("{CONFIG_DIR}", config.config_dir.to_str().unwrap());
                     let _ = std::process::Command::new("sh")
@@ -136,6 +136,8 @@ fn activate(config: conf::Config, app: &Application) {
         macro_hint,
         #[strong]
         input_container,
+        #[strong]
+        config,
         move |e| {
             let term = e.text().to_string();
             if !term.is_empty() {
@@ -144,7 +146,8 @@ fn activate(config: conf::Config, app: &Application) {
                     if let Some((t, _)) = term.split_once(' ') {
                         if let Ok(match_idx) = suggestions.binary_search(&t.to_string()) {
                             let macro_name = suggestions[match_idx].clone().replace('@', "");
-                            macro_hint.set_text(&macro_name);
+                            let r#macro = config.macros.get(&macro_name).unwrap();
+                            macro_hint.set_text(&r#macro.0.display_name);
                             macro_hint.set_visible(true);
                             IN_MACRO_MODE.store(true, Ordering::Relaxed);
                             e.set_text("");
