@@ -139,11 +139,12 @@ fn activate(config: conf::Config, app: &Application) {
                 if !IN_MACRO_MODE.load(Ordering::Relaxed) {
                     if let Some((t, _)) = term.split_once(' ') {
                         if let Ok(match_idx) = suggestions.binary_search(&t.to_string()) {
-                            macro_hint.set_text(&suggestions[match_idx].clone().replace('@', ""));
+                            let macro_name = suggestions[match_idx].clone().replace('@', "");
+                            macro_hint.set_text(&macro_name);
                             macro_hint.set_visible(true);
                             IN_MACRO_MODE.store(true, Ordering::Relaxed);
                             e.set_text("");
-                            input_container.set_css_classes(&["macro_mode"]);
+                            input_container.set_css_classes(&["macro_mode", &macro_name]);
                         } else {
                             macro_hint.set_visible(false);
                             IN_MACRO_MODE.store(false, Ordering::Relaxed);
