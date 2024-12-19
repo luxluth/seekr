@@ -148,7 +148,8 @@ fn activate(config: conf::Config, app: &Application) {
                             macro_hint.set_visible(true);
                             IN_MACRO_MODE.store(true, Ordering::Relaxed);
                             e.set_text("");
-                            input_container.set_css_classes(&["macro_mode", &macro_name]);
+                            macro_hint.set_css_classes(&[&macro_name]);
+                            input_container.set_css_classes(&["macro_mode"]);
                         } else {
                             macro_hint.set_visible(false);
                             IN_MACRO_MODE.store(false, Ordering::Relaxed);
