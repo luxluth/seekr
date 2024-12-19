@@ -40,6 +40,7 @@ pub struct Config {
     pub general: GeneralConf,
     pub css: String,
     pub macros: MacroMap,
+    pub config_dir: PathBuf,
 }
 
 impl Config {
@@ -119,6 +120,7 @@ impl Config {
 
     pub fn parse(path: std::path::PathBuf) -> Self {
         let mut css = DEFAULT_CSS.to_string();
+        let config_dir = path.parent().unwrap().to_path_buf();
         let css_path = path.parent().unwrap().join("style.css");
         if css_path.exists() {
             if let Ok(mut f) = std::fs::File::open(&css_path) {
@@ -138,6 +140,7 @@ impl Config {
             general,
             css,
             macros,
+            config_dir,
         };
     }
 }

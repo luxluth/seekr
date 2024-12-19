@@ -88,7 +88,11 @@ fn activate(config: conf::Config, app: &Application) {
             let entry = e.text().to_string();
             if IN_MACRO_MODE.load(Ordering::Relaxed) {
                 if let Some(def) = config.macros.get(macro_hint.text().as_str()) {
-                    let shell_cmd = def.clone().0.replace("{ENTRY}", &entry);
+                    let shell_cmd = def
+                        .clone()
+                        .0
+                        .replace("{ENTRY}", &entry)
+                        .replace("{CONFIG_DIR}", config.config_dir.to_str().unwrap());
                     let _ = std::process::Command::new("sh")
                         .arg("-c")
                         .arg(shell_cmd)
