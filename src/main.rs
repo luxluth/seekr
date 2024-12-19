@@ -88,7 +88,9 @@ fn activate(config: conf::Config, app: &Application) {
         move |e| {
             let entry = e.text().to_string();
             if IN_MACRO_MODE.load(Ordering::Relaxed) {
-                if let Some(def) = config.macros.get(macro_hint.text().as_str()) {
+                // TODO: find a better way to store current macro tag other than
+                // the css class name
+                if let Some(def) = config.macros.get(macro_hint.css_classes()[0].as_str()) {
                     let MacroDef(_, command) = def;
                     let shell_cmd = command
                         .replace("{ENTRY}", &entry)
