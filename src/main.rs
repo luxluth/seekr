@@ -1,12 +1,13 @@
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
-
 use conf::MacroDef;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
+#[cfg(feature = "gtk-layer-shell")]
+use gtk4_layer_shell::{Edge, Layer, LayerShell};
 use rust_i18n::t;
 use search::SearchManager;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use tokio::runtime::Runtime;
 use ui::entry_button::EntryButton;
 
@@ -36,13 +37,59 @@ fn activate(config: conf::Config, app: &Application) {
         .hide_on_close(true)
         .build();
 
+    #[cfg(feature = "gtk-layer-shell")]
+    {
+        window.add_css_class("is_layer");
+        if config.is_wayland
+            && config.gtk_layer_shell_conf.active
+            && gtk4_layer_shell::is_supported()
+        {
+            let key_press_controller = gtk::EventControllerKey::new();
+            key_press_controller.connect_key_pressed(glib::clone!(
+                #[strong]
+                window,
+                move |_, key, _, _| {
+                    if gtk::gdk::Key::Escape == key {
+                        window.close();
+                    }
+                    glib::Propagation::Proceed
+                }
+            ));
+            window.add_controller(key_press_controller);
+
+            window.init_layer_shell();
+            window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive);
+            window.set_namespace("seekr");
+            window.set_layer(Layer::Top);
+
+            let anchors = [
+                (Edge::Top, config.gtk_layer_shell_conf.top >= 0),
+                (Edge::Left, config.gtk_layer_shell_conf.left >= 0),
+                (Edge::Bottom, false),
+                (Edge::Right, false),
+            ];
+
+            if config.gtk_layer_shell_conf.top >= 0 {
+                window.set_margin(Edge::Top, config.gtk_layer_shell_conf.top);
+            }
+
+            if config.gtk_layer_shell_conf.left >= 0 {
+                window.set_margin(Edge::Left, config.gtk_layer_shell_conf.left);
+            }
+
+            for (anchor, state) in anchors {
+                window.set_anchor(anchor, state);
+            }
+        }
+    }
+
     if let Ok(xdg_current_desktop) = std::env::var("XDG_CURRENT_DESKTOP") {
         if xdg_current_desktop.to_lowercase() == "gnome" {
             window.add_css_class("gnome");
         }
     }
 
-    window.set_default_size(600, -1);
+    window.set_default_size(600, 0);
 
     let (manager, (tomanager, frommanager)) = SearchManager::new();
     manager.manage();
@@ -214,12 +261,15 @@ fn activate(config: conf::Config, app: &Application) {
         result_box,
         #[strong]
         scroll_container,
+        #[strong]
+        window,
         move || {
             while let Some(child) = result_box.first_child() {
                 result_box.remove(&child);
             }
             result_box.set_css_classes(&[]);
             scroll_container.set_visible(false);
+            window.queue_resize();
         }
     );
 
@@ -228,6 +278,8 @@ fn activate(config: conf::Config, app: &Application) {
         result_box,
         #[strong]
         scroll_container,
+        #[strong]
+        window,
         move |res: f64| {
             scroll_container.set_visible(true);
             let math_box = gtk::Box::builder()
@@ -278,6 +330,7 @@ fn activate(config: conf::Config, app: &Application) {
             math_box.append(&answer_box);
 
             result_box.append(&math_box);
+            window.queue_resize();
         }
     );
 
@@ -288,6 +341,8 @@ fn activate(config: conf::Config, app: &Application) {
         tomanager,
         #[strong]
         scroll_container,
+        #[strong]
+        window,
         move |entries: Vec<app::AppEntry>| {
             let entries_box = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
@@ -312,6 +367,7 @@ fn activate(config: conf::Config, app: &Application) {
             }
 
             result_box.append(&entries_box);
+            window.queue_resize();
         }
     );
 
