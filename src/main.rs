@@ -39,6 +39,7 @@ fn activate(config: conf::Config, app: &Application) {
 
     #[cfg(feature = "gtk-layer-shell")]
     {
+        window.add_css_class("is_layer");
         if config.is_wayland
             && config.gtk_layer_shell_conf.active
             && gtk4_layer_shell::is_supported()
