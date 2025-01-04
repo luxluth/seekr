@@ -45,6 +45,23 @@ pub struct GeneralConf {
     pub search_placeholder: String,
 }
 
+#[derive(Clone, Debug)]
+pub struct LayerShellConf {
+    pub active: bool,
+    pub top: i32,
+    pub left: i32,
+}
+
+impl Default for LayerShellConf {
+    fn default() -> Self {
+        Self {
+            active: false,
+            top: 50,
+            left: -1,
+        }
+    }
+}
+
 impl Default for GeneralConf {
     fn default() -> Self {
         GeneralConf {
@@ -64,17 +81,29 @@ pub struct Config {
     pub css: String,
     pub macros: MacroMap,
     pub config_dir: PathBuf,
+    #[allow(dead_code)]
+    pub gtk_layer_shell_conf: LayerShellConf,
+    #[allow(dead_code)]
+    pub is_wayland: bool,
+}
+
+#[derive(PartialEq, Eq)]
+enum ParsingState {
+    General,
+    Macros,
+    GtkLayerShell,
+    NotSet,
 }
 
 impl Config {
-    pub fn get_conf(conf_path: &PathBuf) -> (GeneralConf, MacroMap) {
+    pub fn get_conf(conf_path: &PathBuf) -> (GeneralConf, MacroMap, LayerShellConf) {
         let mut general = GeneralConf::default();
         let mut macros: MacroMap = MacroMap::new();
+        let mut gtk_layer_shell_conf = LayerShellConf::default();
         if let Ok(mut f) = std::fs::File::open(conf_path) {
             let mut data = String::new();
             let _ = f.read_to_string(&mut data);
-            let mut is_in_general = false;
-            let mut is_in_macros = false;
+            let mut state: ParsingState = ParsingState::NotSet;
 
             for (line, item) in ini_roundtrip::Parser::new(&data).enumerate() {
                 match item {
@@ -84,16 +113,42 @@ impl Config {
                     ini_roundtrip::Item::Section {
                         name: "general", ..
                     } => {
-                        is_in_general = true;
+                        state = ParsingState::General;
+                    }
+                    ini_roundtrip::Item::Section {
+                        name: "gtk-layer-shell",
+                        ..
+                    } => {
+                        state = ParsingState::GtkLayerShell;
                     }
                     ini_roundtrip::Item::Section { name: "macros", .. } => {
-                        is_in_general = false;
-                        is_in_macros = true;
+                        state = ParsingState::Macros;
+                    }
+                    ini_roundtrip::Item::Property {
+                        key: "active", val, ..
+                    } => {
+                        if state == ParsingState::GtkLayerShell && val.is_some() {
+                            gtk_layer_shell_conf.active = val.unwrap().trim() == "true";
+                        }
+                    }
+                    ini_roundtrip::Item::Property {
+                        key: "top", val, ..
+                    } => {
+                        if state == ParsingState::GtkLayerShell && val.is_some() {
+                            gtk_layer_shell_conf.top = val.unwrap().parse().unwrap_or(50);
+                        }
+                    }
+                    ini_roundtrip::Item::Property {
+                        key: "left", val, ..
+                    } => {
+                        if state == ParsingState::GtkLayerShell && val.is_some() {
+                            gtk_layer_shell_conf.left = val.unwrap().parse().unwrap_or(-1);
+                        }
                     }
                     ini_roundtrip::Item::Property {
                         key: "theme", val, ..
                     } => {
-                        if is_in_general && val.is_some() {
+                        if state == ParsingState::General && val.is_some() {
                             general.theme = val.unwrap().trim().to_string();
                         }
                     }
@@ -102,14 +157,14 @@ impl Config {
                         val,
                         ..
                     } => {
-                        if is_in_general && val.is_some() {
+                        if state == ParsingState::General && val.is_some() {
                             general.terminal = val.unwrap().trim().to_string();
                         }
                     }
                     ini_roundtrip::Item::Property {
                         key: "args", val, ..
                     } => {
-                        if is_in_general && val.is_some() {
+                        if state == ParsingState::General && val.is_some() {
                             general.args = val
                                 .unwrap()
                                 .trim()
@@ -123,13 +178,13 @@ impl Config {
                         val,
                         ..
                     } => {
-                        if is_in_general && val.is_some() {
+                        if state == ParsingState::General && val.is_some() {
                             general.search_placeholder = val.unwrap().to_string();
                         }
                     }
 
                     ini_roundtrip::Item::Property { key, val, .. } => {
-                        if is_in_macros && val.is_some() {
+                        if state == ParsingState::Macros && val.is_some() {
                             let macro_name = MacroName::parse(&key);
                             let invoke_name = macro_name.invoke_name.clone();
                             let r#macro = MacroDef(macro_name, val.unwrap().to_string());
@@ -140,7 +195,7 @@ impl Config {
                 }
             }
         }
-        return (general, macros);
+        return (general, macros, gtk_layer_shell_conf);
     }
 
     pub fn parse(path: std::path::PathBuf) -> Self {
@@ -158,7 +213,7 @@ impl Config {
             }
         }
 
-        let (general, macros) = Self::get_conf(&path);
+        let (general, macros, gtk_layer_shell_conf) = Self::get_conf(&path);
         debug!("Loaded macros .... {:#?}", macros);
 
         return Self {
@@ -166,6 +221,11 @@ impl Config {
             css,
             macros,
             config_dir,
+            gtk_layer_shell_conf,
+            is_wayland: std::env::var("XDG_SESSION_TYPE")
+                .unwrap_or("x11".to_string())
+                .to_lowercase()
+                == "wayland",
         };
     }
 }

@@ -14,6 +14,13 @@ _System search util for linux_
 cargo install seekr-util
 ```
 
+> [!NOTE]
+> To enable gtk-layer-shell support, enable the `gtk-layer-shell` feature as follow
+>
+> `cargo install seekr-util --features=gtk-layer-shell`
+> make sure to have [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell)
+> installed on your system
+
 ## Configuration
 
 On the first run of the app, configurations files will be generated into
