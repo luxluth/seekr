@@ -214,7 +214,7 @@ impl Config {
         }
 
         let (general, macros, gtk_layer_shell_conf) = Self::get_conf(&path);
-        debug!("Loaded macros .... {:#?}", macros);
+        debug!("{} macro(s) loaded", macros.len());
 
         return Self {
             general,

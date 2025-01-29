@@ -16,6 +16,7 @@ mod bus;
 mod conf;
 mod icons;
 mod locale;
+mod plugin;
 mod resources;
 mod search;
 mod ui;
@@ -24,7 +25,29 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 static IN_MACRO_MODE: AtomicBool = AtomicBool::new(false);
 
-fn activate(config: conf::Config, app: &Application) {
+#[derive(Default, Clone, Copy)]
+struct StartupOptions {
+    silent: bool,
+}
+
+impl StartupOptions {
+    fn read_args(&mut self) {
+        for arg in std::env::args() {
+            match arg.as_str() {
+                "--silent" => self.silent = true,
+                _ => {}
+            }
+        }
+    }
+}
+
+fn activate(
+    config: conf::Config,
+    app: &Application,
+    opts: StartupOptions,
+    mut pl: plugin::PluginLoader,
+) {
+    pl.start();
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
     settings.set_gtk_icon_theme_name(Some(&config.general.theme));
 
@@ -371,7 +394,9 @@ fn activate(config: conf::Config, app: &Application) {
         }
     );
 
-    window.present();
+    if !opts.silent {
+        window.present();
+    }
 
     {
         glib::spawn_future_local(glib::clone!(async move {
@@ -420,16 +445,33 @@ fn main() {
             .with_timer(tracing_subscriber::fmt::time::time())
             .init();
 
-        let config = conf::Config::parse(conf::init_config_dir());
-
         gtk::init().expect("Unable to init gtk");
-        load_css(config.css.clone(), None);
 
         let application = Application::new(Some(conf::APP_ID), Default::default());
 
         application.connect_activate(move |app| {
-            activate(config.clone(), app);
+            let mut opts = StartupOptions::default();
+            opts.read_args();
+
+            let config_file_path = conf::init_config_dir();
+            let config_dir = config_file_path.parent().unwrap();
+
+            let config = conf::Config::parse(config_file_path.clone());
+            load_css(config.css.clone(), None);
+
+            let mut pl = plugin::PluginLoader::new();
+            pl.lookup(config_dir);
+            activate(config.clone(), app, opts, pl);
         });
+
+        application.add_main_option(
+            "silent",
+            's'.try_into().unwrap(),
+            gtk::glib::OptionFlags::NONE,
+            gtk::glib::OptionArg::None,
+            &t!("silent_opt").to_string(),
+            None,
+        );
 
         application.run();
     }
