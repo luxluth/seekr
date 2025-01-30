@@ -45,7 +45,7 @@ fn activate(
     config: conf::Config,
     app: &Application,
     opts: StartupOptions,
-    mut pl: plugin::PluginLoader,
+    pl: plugin::PluginLoader,
 ) {
     pl.start();
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
@@ -210,6 +210,8 @@ fn activate(
         input_container,
         #[strong]
         config,
+        #[strong]
+        pl,
         move |e| {
             let term = e.text().to_string();
             if !term.is_empty() {
@@ -242,7 +244,8 @@ fn activate(
                 }
             }
             if !IN_MACRO_MODE.load(Ordering::Relaxed) {
-                let _ = tomanager.send(search::SearchEvent::Term(term));
+                let _ = tomanager.send(search::SearchEvent::Term(term.clone()));
+                pl.send(term.clone());
             }
         }
     ));
@@ -459,8 +462,8 @@ fn main() {
             let config = conf::Config::parse(config_file_path.clone());
             load_css(config.css.clone(), None);
 
-            let mut pl = plugin::PluginLoader::new();
-            pl.lookup(config_dir);
+            let mut pl = plugin::PluginLoader::new(config_dir);
+            pl.lookup();
             activate(config.clone(), app, opts, pl);
         });
 

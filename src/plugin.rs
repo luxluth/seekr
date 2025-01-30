@@ -1,14 +1,10 @@
 use std::{collections::HashMap, io::Read};
 
+// use gtk::prelude::*;
 use mlua::prelude::*;
 use tracing::{debug, error, warn};
 
-pub struct PluginLoader {
-    ctxt: Lua,
-    plugins: HashMap<String, Plugin>,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Plugin {
     __api_version: i64,
     name: String,
@@ -68,15 +64,79 @@ impl Plugin {
     }
 }
 
+struct SeekrGlobal(String);
+
+impl LuaUserData for SeekrGlobal {
+    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
+        fields.add_field_method_get("config_dir", |_, this| Ok(this.0.clone()));
+    }
+
+    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method("env", |_lua, _this, key: String| match std::env::var(key) {
+            Ok(value) => {
+                return Ok(value);
+            }
+            Err(_) => Ok(String::new()),
+        });
+
+        methods.add_method("log", |_lua, _this, data: (String, String)| {
+            debug!("{} :: {}", data.0, data.1);
+            Ok(())
+        });
+
+        methods.add_method("glob", |_lua, _this, pattern: String| {
+            let result = glob::glob(&pattern);
+            if result.is_ok() {
+                let mut paths = vec![];
+                for path in result.unwrap().into_iter() {
+                    if let Ok(path) = path {
+                        paths.push(format!("{}", path.display()));
+                    }
+                }
+                Ok(paths)
+            } else {
+                Ok(vec![])
+            }
+        });
+
+        // methods.add_meta_method(LuaMetaMethod::Add, |_, this, value: i32| Ok(this.0 + value));
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PluginLoader {
+    ctxt: Lua,
+    plugins: HashMap<String, Plugin>,
+    config_dir: String,
+}
+
 impl PluginLoader {
-    pub fn new() -> Self {
+    pub fn new(config_dir: &std::path::Path) -> Self {
+        let ctxt = Lua::new();
+        let config_dir = config_dir.to_str().unwrap().to_string();
+        let _ = ctxt.globals().set("seekr", SeekrGlobal(config_dir.clone()));
+
         PluginLoader {
-            ctxt: Lua::new(),
+            ctxt,
             plugins: HashMap::new(),
+            config_dir,
         }
     }
 
-    pub fn start(&mut self) {
+    pub fn send(&self, input: String) {
+        for (_, plugin) in self.plugins.iter() {
+            if plugin.on_input.is_some() {
+                let _ = plugin
+                    .on_input
+                    .clone()
+                    .unwrap()
+                    .clone()
+                    .call::<()>(input.clone());
+            }
+        }
+    }
+
+    pub fn start(&self) {
         for (_, plugin) in self.plugins.iter() {
             if plugin.on_startup.is_some() {
                 let _ = plugin.on_startup.clone().unwrap().clone().call::<()>(());
@@ -125,7 +185,8 @@ impl PluginLoader {
         }
     }
 
-    pub fn lookup(&mut self, config_dir: &std::path::Path) {
+    pub fn lookup(&mut self) {
+        let config_dir = std::path::Path::new(&self.config_dir);
         let start = std::time::Instant::now();
         let plugins_dir = config_dir.join("plugins");
         if plugins_dir.exists() && plugins_dir.is_dir() {
