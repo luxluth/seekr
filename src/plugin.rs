@@ -126,12 +126,12 @@ impl PluginLoader {
     pub fn send(&self, input: String) {
         for (_, plugin) in self.plugins.iter() {
             if plugin.on_input.is_some() {
-                let _ = plugin
-                    .on_input
-                    .clone()
-                    .unwrap()
-                    .clone()
-                    .call::<()>(input.clone());
+                if let Ok(t) = self
+                    .ctxt
+                    .create_thread(plugin.on_input.clone().unwrap().clone())
+                {
+                    let _ = t.resume::<()>(input.clone());
+                }
             }
         }
     }
