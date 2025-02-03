@@ -8,6 +8,7 @@ use rust_i18n::t;
 use search::SearchManager;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::Sender;
 use tokio::runtime::Runtime;
 use ui::entry_button::EntryButton;
 
@@ -45,9 +46,8 @@ fn activate(
     config: conf::Config,
     app: &Application,
     opts: StartupOptions,
-    pl: plugin::PluginLoader,
+    to_plugins: Sender<plugin::MessageToPlugins>,
 ) {
-    pl.start();
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
     settings.set_gtk_icon_theme_name(Some(&config.general.theme));
 
@@ -211,7 +211,7 @@ fn activate(
         #[strong]
         config,
         #[strong]
-        pl,
+        to_plugins,
         move |e| {
             let term = e.text().to_string();
             if !term.is_empty() {
@@ -245,7 +245,7 @@ fn activate(
             }
             if !IN_MACRO_MODE.load(Ordering::Relaxed) {
                 let _ = tomanager.send(search::SearchEvent::Term(term.clone()));
-                pl.send(term.clone());
+                let _ = to_plugins.send(plugin::MessageToPlugins::Term(term));
             }
         }
     ));
@@ -451,20 +451,25 @@ fn main() {
         gtk::init().expect("Unable to init gtk");
 
         let application = Application::new(Some(conf::APP_ID), Default::default());
+        let config_file_path = conf::init_config_dir();
+        let config_dir = config_file_path.parent().unwrap();
+        let mut pl = plugin::PluginLoader::new(config_dir);
+        pl.lookup();
+
+        let to_plugins = pl.sx.clone();
+
+        std::thread::spawn(move || {
+            pl.start();
+        });
 
         application.connect_activate(move |app| {
             let mut opts = StartupOptions::default();
             opts.read_args();
 
-            let config_file_path = conf::init_config_dir();
-            let config_dir = config_file_path.parent().unwrap();
-
             let config = conf::Config::parse(config_file_path.clone());
             load_css(config.css.clone(), None);
 
-            let mut pl = plugin::PluginLoader::new(config_dir);
-            pl.lookup();
-            activate(config.clone(), app, opts, pl);
+            activate(config.clone(), app, opts, to_plugins.clone());
         });
 
         application.add_main_option(

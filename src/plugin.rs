@@ -2,6 +2,7 @@ use std::{collections::HashMap, io::Read};
 
 // use gtk::prelude::*;
 use mlua::prelude::*;
+use std::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, warn};
 
 #[derive(Debug, Clone)]
@@ -108,6 +109,13 @@ pub struct PluginLoader {
     ctxt: Lua,
     plugins: HashMap<String, Plugin>,
     config_dir: String,
+    rx: std::sync::Arc<std::sync::Mutex<Receiver<MessageToPlugins>>>,
+    pub sx: Sender<MessageToPlugins>,
+}
+
+#[derive(Debug, Clone)]
+pub enum MessageToPlugins {
+    Term(String),
 }
 
 impl PluginLoader {
@@ -115,31 +123,33 @@ impl PluginLoader {
         let ctxt = Lua::new();
         let config_dir = config_dir.to_str().unwrap().to_string();
         let _ = ctxt.globals().set("seekr", SeekrGlobal(config_dir.clone()));
+        let (sx, rx) = mpsc::channel::<MessageToPlugins>();
 
         PluginLoader {
             ctxt,
             plugins: HashMap::new(),
             config_dir,
+            rx: std::sync::Arc::new(std::sync::Mutex::new(rx)),
+            sx,
         }
     }
 
-    pub fn send(&self, input: String) {
-        for (_, plugin) in self.plugins.iter() {
-            if plugin.on_input.is_some() {
-                if let Ok(t) = self
-                    .ctxt
-                    .create_thread(plugin.on_input.clone().unwrap().clone())
-                {
-                    let _ = t.resume::<()>(input.clone());
-                }
-            }
-        }
-    }
-
-    pub fn start(&self) {
+    pub fn start(self) {
         for (_, plugin) in self.plugins.iter() {
             if plugin.on_startup.is_some() {
                 let _ = plugin.on_startup.clone().unwrap().clone().call::<()>(());
+            }
+        }
+
+        while let Ok(msg) = self.rx.lock().unwrap().recv() {
+            match msg {
+                MessageToPlugins::Term(term) => {
+                    for (_, plugin) in self.plugins.iter() {
+                        if plugin.on_input.is_some() {
+                            let _ = plugin.on_input.clone().unwrap().call::<()>(term.clone());
+                        }
+                    }
+                }
             }
         }
     }
