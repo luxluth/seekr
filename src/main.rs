@@ -145,6 +145,23 @@ fn activate(
         .name("inputBox")
         .build();
 
+    let input_overlays = gtk::Overlay::builder()
+        .height_request(60)
+        .hexpand(true)
+        .build();
+
+    let completion_label = gtk::Label::builder()
+        .css_name("input")
+        .selectable(false)
+        .focusable(false)
+        .css_classes(["completion"])
+        .hexpand(true)
+        .vexpand(true)
+        .build();
+
+    input_overlays.add_overlay(&completion_label);
+    input_overlays.add_overlay(&input_container);
+
     let macro_hint = gtk::Label::builder().css_name("macroHint").build();
     macro_hint.set_visible(false);
 
@@ -278,7 +295,7 @@ fn activate(
     scroll_container.set_child(Some(&result_box));
     scroll_container.set_visible(false);
 
-    shell.append(&input_container);
+    shell.append(&input_overlays);
     shell.append(&scroll_container);
     window.set_child(Some(&shell));
 
