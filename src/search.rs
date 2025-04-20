@@ -1,4 +1,5 @@
 use crate::app;
+use crate::localsearch;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use std::sync::mpsc::{self, Receiver, Sender};

@@ -17,6 +17,7 @@ mod bus;
 mod conf;
 mod icons;
 mod locale;
+mod localsearch;
 mod plugin;
 mod resources;
 mod search;
@@ -82,7 +83,7 @@ fn activate(
 
             window.init_layer_shell();
             window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive);
-            window.set_namespace("seekr");
+            window.set_namespace(Some("seekr"));
             window.set_layer(Layer::Top);
 
             let anchors = [
