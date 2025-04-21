@@ -5,6 +5,7 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::skim::SkimScoreConfig;
 use fuzzy_matcher::FuzzyMatcher;
 use std::sync::mpsc::{self, Receiver, Sender};
+use tracing::error;
 
 pub enum SearchEvent {
     Term(String),
@@ -58,6 +59,7 @@ impl SearchManager {
                 match ev {
                     SearchEvent::Term(query) => {
                         let _ = self.outsender.send(ManagerEvent::Clear).await;
+
                         let mut entry_results: Vec<(app::AppEntry, i64)> = self
                             .entries
                             .iter()
@@ -87,6 +89,23 @@ impl SearchManager {
                                     .await;
                             }
                         } else {
+                            if !query.starts_with("@") && !query.is_empty() {
+                                let localsearch_sx = self.outsender.clone();
+                                let term_clone = query.clone();
+                                tokio::spawn(async move {
+                                    match localsearch::search(term_clone, 10) {
+                                        Ok(e) => {
+                                            let _ = localsearch_sx
+                                                .send(ManagerEvent::LocalsearchData(e))
+                                                .await;
+                                        }
+                                        Err(e) => {
+                                            error!("{e:?}");
+                                        }
+                                    };
+                                });
+                            }
+
                             let top_5 = &entry_results[..10.min(entry_results.len())];
                             if !top_5.is_empty() {
                                 let _ = self

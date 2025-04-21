@@ -1,8 +1,4 @@
-window,
-input,
-inputBox,
-resultBox,
-entry {
+window {
   background: #242424;
   color: #ffffff;
 }
@@ -16,19 +12,21 @@ window.gnome {
   border-radius: 12px;
 }
 
-inputBox {
+inputBox,
+completionBox {
   padding-right: 10px;
   padding-left: 10px;
   transition: ease-in-out 0.25s all;
 }
 
-input {
-  caret-color: #ffffff;
-  font-size: 32px;
+completionLabel {
+  opacity: 0.5;
 }
 
-input.completion {
-  opacity: 0.3;
+input,
+completionLabel {
+  caret-color: #ffffff;
+  font-size: 32px;
 }
 
 input.has_input {

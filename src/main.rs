@@ -149,18 +149,29 @@ fn activate(
     let input_overlays = gtk::Overlay::builder()
         .height_request(60)
         .hexpand(true)
-        .build();
-
-    let completion_label = gtk::Label::builder()
-        .css_name("input")
-        .selectable(false)
-        .focusable(false)
-        .css_classes(["completion"])
-        .hexpand(true)
         .vexpand(true)
         .build();
 
-    input_overlays.add_overlay(&completion_label);
+    let completion_box = gtk::Box::builder()
+        .name("completionBox")
+        .hexpand(true)
+        .vexpand(false)
+        .halign(gtk::Align::End)
+        .margin_end(10)
+        .build();
+
+    let completion_label = gtk::Label::builder()
+        .css_name("completionLabel")
+        .selectable(false)
+        .focusable(false)
+        .ellipsize(gtk::pango::EllipsizeMode::End)
+        .hexpand(false)
+        .vexpand(true)
+        .build();
+
+    completion_box.append(&completion_label);
+
+    input_overlays.add_overlay(&completion_box);
     input_overlays.add_overlay(&input_container);
 
     let macro_hint = gtk::Label::builder().css_name("macroHint").build();
@@ -230,6 +241,8 @@ fn activate(
         config,
         #[strong]
         to_plugins,
+        #[strong]
+        completion_label,
         move |e| {
             let term = e.text().to_string();
             if !term.is_empty() {
@@ -243,6 +256,7 @@ fn activate(
                             macro_hint.set_visible(true);
                             IN_MACRO_MODE.store(true, Ordering::Relaxed);
                             e.set_text("");
+                            completion_label.set_text("");
                             macro_hint.set_css_classes(&[&macro_name]);
                             input_container.set_css_classes(&["macro_mode"]);
                         } else {
@@ -263,7 +277,17 @@ fn activate(
             }
             if !IN_MACRO_MODE.load(Ordering::Relaxed) {
                 let _ = tomanager.send(search::SearchEvent::Term(term.clone()));
-                let _ = to_plugins.send(plugin::MessageToPlugins::Term(term));
+                let _ = to_plugins.send(plugin::MessageToPlugins::Term(term.clone()));
+
+                completion_label.set_text("");
+                if !term.is_empty() {
+                    for suggest in &suggestions {
+                        if suggest.starts_with(&term) {
+                            completion_label.set_text(&suggest.replace('@', ""));
+                            break;
+                        }
+                    }
+                }
             }
         }
     ));
@@ -366,6 +390,7 @@ fn activate(
                 .css_classes(["answer"])
                 .halign(gtk::Align::Center)
                 .ellipsize(gtk::pango::EllipsizeMode::End)
+                .selectable(true)
                 .build();
             answer.set_text(&format!("{res}"));
             answer_box.append(&answer);
@@ -429,7 +454,9 @@ fn activate(
                     search::ManagerEvent::Close => {
                         window.close();
                     }
-                    search::ManagerEvent::LocalsearchData(_file_datas) => {}
+                    search::ManagerEvent::LocalsearchData(file_datas) => {
+                        tracing::debug!("localsearch: {file_datas:?}");
+                    }
                 }
             }
         }));

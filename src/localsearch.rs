@@ -31,10 +31,7 @@ impl FileData {
     }
 }
 
-pub fn search<S: ToString>(
-    term: S,
-    limit: i64,
-) -> Result<Vec<FileData>, Box<dyn std::error::Error>> {
+pub fn search<S: ToString>(term: S, limit: i64) -> Result<Vec<FileData>, String> {
     let mut results = vec![];
     let term = term.to_string();
     let query = format!(
