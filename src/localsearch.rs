@@ -2,6 +2,7 @@ use std::ptr;
 use std::{ffi::CStr, path::PathBuf};
 
 use glib_sys::{g_clear_error, g_error_free, GError};
+use gtk::glib::gobject_ffi::g_object_unref;
 use tracker_sys::{
     tracker_sparql_connection_query, tracker_sparql_cursor_get_n_columns,
     tracker_sparql_cursor_get_string, tracker_sparql_cursor_next, TrackerSparqlConnection,
@@ -78,7 +79,7 @@ LIMIT {limit}"#
 
     #[allow(unused_assignments)]
     let mut conn: *mut TrackerSparqlConnection = ptr::null_mut();
-    let error: *mut GError = ptr::null_mut();
+    let mut error: *mut GError = ptr::null_mut();
 
     let service_name = "org.freedesktop.Tracker3.Miner.Files\0";
 
@@ -87,13 +88,13 @@ LIMIT {limit}"#
             service_name.as_ptr() as *const i8,
             ptr::null(),
             ptr::null_mut(),
-            error.cast(),
+            &mut error,
         )
     };
 
     if conn.is_null() {
         unsafe {
-            g_clear_error(error.cast());
+            g_clear_error(&mut error);
         }
         return Err("Could not establish a connection to Tracker".into());
     }
@@ -103,7 +104,7 @@ LIMIT {limit}"#
             conn,
             query_str.as_str().as_ptr() as *const i8,
             ptr::null_mut(),
-            error.cast(),
+            &mut error,
         )
     };
 
@@ -120,7 +121,7 @@ LIMIT {limit}"#
         return Err("No results were found matching your query".into());
     }
 
-    while unsafe { tracker_sparql_cursor_next(cursor, ptr::null_mut(), error.cast()) == 1 } {
+    while unsafe { tracker_sparql_cursor_next(cursor, ptr::null_mut(), &mut error) == 1 } {
         unsafe {
             let _ = tracker_sparql_cursor_get_n_columns(cursor);
             let uri = CStr::from_ptr(tracker_sparql_cursor_get_string(cursor, 0, ptr::null_mut()))
@@ -143,6 +144,10 @@ LIMIT {limit}"#
 
             results.push(FileData { mime, uri, path });
         }
+    }
+
+    unsafe {
+        g_object_unref(conn.cast());
     }
 
     Ok(results)
