@@ -1,5 +1,5 @@
-use std::ffi::CStr;
 use std::ptr;
+use std::{ffi::CStr, path::PathBuf};
 
 use glib_sys::{g_clear_error, g_error_free, GError};
 use tracker_sys::{
@@ -8,15 +8,33 @@ use tracker_sys::{
 };
 
 #[derive(Debug)]
-pub struct SearchResult {
+pub struct FileData {
     pub mime: Option<String>,
+    pub path: Option<PathBuf>,
     pub uri: String,
+}
+
+impl FileData {
+    pub fn try_open(&self) -> bool {
+        let mut cmd = std::process::Command::new("xdg-open");
+        cmd.arg(&self.uri);
+
+        match cmd.spawn() {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
+    #[inline]
+    pub fn icon(&self) -> gtk::gio::Icon {
+        crate::icons::get_icon(&self.mime.clone().unwrap_or("text-x-preview".to_string()))
+    }
 }
 
 pub fn search<S: ToString>(
     term: S,
-    limit: u64,
-) -> Result<Vec<SearchResult>, Box<dyn std::error::Error>> {
+    limit: i64,
+) -> Result<Vec<FileData>, Box<dyn std::error::Error>> {
     let mut results = vec![];
     let term = term.to_string();
     let query = format!(
@@ -112,6 +130,13 @@ LIMIT {limit}"#
                 .to_string_lossy()
                 .to_string();
 
+            let mut path = None;
+            if uri.starts_with("file://") {
+                path = Some(PathBuf::from(
+                    url_escape::decode(uri.strip_prefix("file://").unwrap()).to_string(),
+                ));
+            }
+
             let mime_ptr = tracker_sparql_cursor_get_string(cursor, 1, ptr::null_mut());
             let mime = if mime_ptr.is_null() {
                 None
@@ -119,7 +144,7 @@ LIMIT {limit}"#
                 Some(CStr::from_ptr(mime_ptr).to_string_lossy().to_string())
             };
 
-            results.push(SearchResult { mime, uri });
+            results.push(FileData { mime, uri, path });
         }
     }
 

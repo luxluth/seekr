@@ -429,6 +429,7 @@ fn activate(
                     search::ManagerEvent::Close => {
                         window.close();
                     }
+                    search::ManagerEvent::LocalsearchData(_file_datas) => {}
                 }
             }
         }));

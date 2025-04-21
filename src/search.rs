@@ -1,6 +1,8 @@
 use crate::app;
 use crate::localsearch;
+
 use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::skim::SkimScoreConfig;
 use fuzzy_matcher::FuzzyMatcher;
 use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -12,6 +14,7 @@ pub enum SearchEvent {
 
 pub enum ManagerEvent {
     DisplayEntries(Vec<app::AppEntry>),
+    LocalsearchData(Vec<localsearch::FileData>),
     Mathematic(f64),
     Clear,
     Close,
@@ -31,11 +34,18 @@ impl SearchManager {
     ) {
         let (insender, rx) = mpsc::channel::<SearchEvent>();
         let (outsender, outrx) = async_channel::bounded::<ManagerEvent>(1);
+        let mut score_cfg = SkimScoreConfig::default();
+
+        score_cfg.bonus_first_char_multiplier = 1000;
+        score_cfg.bonus_consecutive = 100;
+
         (
             Self {
                 rx,
                 outsender,
-                matcher: SkimMatcherV2::default(),
+                matcher: SkimMatcherV2::default()
+                    .smart_case()
+                    .score_config(score_cfg),
                 entries: app::collect_apps(),
             },
             (insender, outrx),
@@ -48,21 +58,24 @@ impl SearchManager {
                 match ev {
                     SearchEvent::Term(query) => {
                         let _ = self.outsender.send(ManagerEvent::Clear).await;
-                        let entry_results: Vec<app::AppEntry> = self
+                        let mut entry_results: Vec<(app::AppEntry, i64)> = self
                             .entries
                             .iter()
                             .filter_map(|entry| {
                                 let entry = entry.clone();
                                 let score =
                                     self.matcher.fuzzy_match(&entry.name, &query).unwrap_or(0);
-
                                 if score > 0 {
-                                    Some(entry)
+                                    Some((entry, score))
                                 } else {
                                     None
                                 }
                             })
                             .collect();
+                        entry_results.sort_by(|(_, a), (_, b)| (b - a).cmp(a));
+                        let entry_results: Vec<app::AppEntry> =
+                            entry_results.into_iter().map(|(elem, _)| elem).collect();
+
                         if let Ok(res) = exmex::eval_str::<f64>(&query) {
                             let _ = self.outsender.send(ManagerEvent::Mathematic(res)).await;
 
