@@ -43,6 +43,7 @@ pub struct GeneralConf {
     pub terminal: String,
     pub args: Vec<String>,
     pub search_placeholder: String,
+    pub date_format: String,
 }
 
 #[derive(Clone, Debug)]
@@ -69,6 +70,7 @@ impl Default for GeneralConf {
             terminal: "kitty".to_string(),
             args: vec!["-e".to_string()],
             search_placeholder: t!("search_placeholder").to_string(),
+            date_format: "%d/%m/%Y %H:%M".to_string(),
         }
     }
 }
@@ -150,6 +152,15 @@ impl Config {
                     } => {
                         if state == ParsingState::General && val.is_some() {
                             general.theme = val.unwrap().trim().to_string();
+                        }
+                    }
+                    ini_roundtrip::Item::Property {
+                        key: "date_format",
+                        val,
+                        ..
+                    } => {
+                        if state == ParsingState::General && val.is_some() {
+                            general.date_format = val.unwrap().trim().to_string();
                         }
                     }
                     ini_roundtrip::Item::Property {

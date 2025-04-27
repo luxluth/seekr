@@ -27,3 +27,10 @@ silent_opt:
   zh: 第一次运行应用程序时不显示窗口
   ja: アプリケーションを初回実行時にウィンドウを表示せずに実行する
   es: Ejecutar la aplicación por primera vez sin mostrar la ventana
+
+files:
+  en: "Files"
+  fr: "Fichiers"
+  zh: "文件"
+  ja: "ファイル"
+  es: "Archivos"

@@ -1,11 +1,11 @@
 use crate::app;
+#[cfg(feature = "localsearch")]
 use crate::localsearch;
 
+use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::skim::SkimScoreConfig;
-use fuzzy_matcher::FuzzyMatcher;
 use std::sync::mpsc::{self, Receiver, Sender};
-use tracing::error;
 
 pub enum SearchEvent {
     Term(String),
@@ -15,6 +15,7 @@ pub enum SearchEvent {
 
 pub enum ManagerEvent {
     DisplayEntries(Vec<app::AppEntry>),
+    #[cfg(feature = "localsearch")]
     LocalsearchData(Vec<localsearch::FileData>),
     Mathematic(f64),
     Clear,
@@ -89,21 +90,24 @@ impl SearchManager {
                                     .await;
                             }
                         } else {
-                            if !query.starts_with("@") && !query.is_empty() {
-                                let localsearch_sx = self.outsender.clone();
-                                let term_clone = query.clone();
-                                tokio::spawn(async move {
-                                    match localsearch::search(term_clone, 10) {
-                                        Ok(e) => {
-                                            let _ = localsearch_sx
-                                                .send(ManagerEvent::LocalsearchData(e))
-                                                .await;
-                                        }
-                                        Err(e) => {
-                                            error!("{e:?}");
-                                        }
-                                    };
-                                });
+                            #[cfg(feature = "localsearch")]
+                            {
+                                if !query.starts_with("@") && !query.is_empty() {
+                                    let localsearch_sx = self.outsender.clone();
+                                    let term_clone = query.clone();
+                                    tokio::spawn(async move {
+                                        match localsearch::search(term_clone, 10) {
+                                            Ok(e) => {
+                                                let _ = localsearch_sx
+                                                    .send(ManagerEvent::LocalsearchData(e))
+                                                    .await;
+                                            }
+                                            Err(e) => {
+                                                tracing::error!("{e:?}");
+                                            }
+                                        };
+                                    });
+                                }
                             }
 
                             let top_5 = &entry_results[..10.min(entry_results.len())];

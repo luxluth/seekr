@@ -11,12 +11,15 @@ use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use tokio::runtime::Runtime;
 use ui::entry_button::EntryButton;
+#[cfg(feature = "localsearch")]
+use ui::file_button::FileButton;
 
 mod app;
 mod bus;
 mod conf;
 mod icons;
 mod locale;
+#[cfg(feature = "localsearch")]
 mod localsearch;
 mod plugin;
 mod resources;
@@ -411,6 +414,8 @@ fn activate(
         #[strong]
         scroll_container,
         #[strong]
+        config,
+        #[strong]
         window,
         move |entries: Vec<app::AppEntry>| {
             let entries_box = gtk::Box::builder()
@@ -440,6 +445,73 @@ fn activate(
         }
     );
 
+    #[cfg(feature = "localsearch")]
+    let files_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(2)
+        .name("filesBox")
+        .css_name("filesBox")
+        .build();
+
+    #[cfg(feature = "localsearch")]
+    let add_files = glib::clone!(
+        #[strong]
+        result_box,
+        #[strong]
+        files_box,
+        #[strong]
+        tomanager,
+        #[strong]
+        scroll_container,
+        #[strong]
+        entry,
+        #[strong]
+        window,
+        move |files: Vec<localsearch::FileData>| {
+            while let Some(child) = files_box.first_child() {
+                files_box.remove(&child);
+            }
+
+            let mut children = result_box.first_child();
+            let mut has_files_box = false;
+            while let Some(ch) = children {
+                if ch.widget_name().as_str() == "filesBox" {
+                    has_files_box = true;
+                    break;
+                }
+                children = ch.next_sibling();
+            }
+
+            if !IN_MACRO_MODE.load(Ordering::Relaxed)
+                && !entry.text().is_empty()
+                && !entry.text().to_string().starts_with("@")
+            {
+                if !files.is_empty() {
+                    scroll_container.set_visible(true);
+                    let title = gtk::Label::builder()
+                        .hexpand(true)
+                        .halign(gtk::Align::Start)
+                        .ellipsize(gtk::pango::EllipsizeMode::End)
+                        .css_name("title")
+                        .build();
+
+                    title.set_label(&t!("files").to_string());
+                    files_box.append(&title);
+                }
+
+                for files in files {
+                    let button = FileButton(&config, files, &tomanager);
+                    files_box.append(&button);
+                }
+
+                if !has_files_box {
+                    result_box.append(&files_box);
+                }
+            }
+            window.queue_resize();
+        }
+    );
+
     if !opts.silent {
         window.present();
     }
@@ -454,9 +526,8 @@ fn activate(
                     search::ManagerEvent::Close => {
                         window.close();
                     }
-                    search::ManagerEvent::LocalsearchData(file_datas) => {
-                        tracing::debug!("localsearch: {file_datas:?}");
-                    }
+                    #[cfg(feature = "localsearch")]
+                    search::ManagerEvent::LocalsearchData(file_datas) => add_files(file_datas),
                 }
             }
         }));

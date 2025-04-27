@@ -4,8 +4,10 @@
 - Macros hint
 - App style simplifications
 - New css styles changes and attributes :
-  `completionLabel` - the macro hint label on the right side of the text entry
-  `completionBox` - the box surrounding the `completionLabel`.
+  - `completionLabel` - the macro hint label on the right side of the text entry
+  - `completionBox` - the box surrounding the `completionLabel`.
+  - `file`, `fileIcon`, `fileName`, `fileDetails` - equivalent style attributes
+    for the file search result
 - The completion box and the input box are overlayed. If the input box
   background isn't transparent, the completion box will not be visible
 - Math result can now be copied

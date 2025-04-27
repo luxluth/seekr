@@ -20,7 +20,7 @@ pub fn EntryButton(config: &Config, entry: AppEntry, sender: &Sender<SearchEvent
         .build();
 
     let focus_controller = gtk::EventControllerFocus::new();
-    focus_controller.set_name(Some("gtk-box-focus-controller"));
+    focus_controller.set_name(Some("gtk-entry-box-focus-controller"));
 
     focus_controller.connect_enter(glib::clone!(
         #[weak]

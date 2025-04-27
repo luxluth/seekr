@@ -1,14 +1,14 @@
 use std::ptr;
 use std::{ffi::CStr, path::PathBuf};
 
-use glib_sys::{g_clear_error, g_error_free, GError};
+use glib_sys::{GError, g_clear_error, g_error_free};
 use gtk::glib::gobject_ffi::g_object_unref;
 use tracker_sys::{
-    tracker_sparql_connection_query, tracker_sparql_cursor_get_n_columns,
-    tracker_sparql_cursor_get_string, tracker_sparql_cursor_next, TrackerSparqlConnection,
+    TrackerSparqlConnection, tracker_sparql_connection_query, tracker_sparql_cursor_get_n_columns,
+    tracker_sparql_cursor_get_string, tracker_sparql_cursor_next,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileData {
     pub mime: Option<String>,
     pub path: Option<PathBuf>,
@@ -28,7 +28,15 @@ impl FileData {
 
     #[inline]
     pub fn icon(&self) -> gtk::gio::Icon {
-        crate::icons::get_icon(&self.mime.clone().unwrap_or("text-x-preview".to_string()))
+        let mut icon_name = "text-x-preview";
+        if self.mime.is_some() {
+            let mime = self.mime.clone().unwrap();
+            let attempt = mime.replacen("/", "-", 1);
+            icon_name = attempt.as_str();
+            crate::icons::get_icon(icon_name)
+        } else {
+            crate::icons::get_icon(icon_name)
+        }
     }
 }
 
