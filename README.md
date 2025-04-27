@@ -8,7 +8,6 @@ _System search util for linux_
 
 </div>
 
-
 ## Installation
 
 ```sh
@@ -29,6 +28,17 @@ cargo install seekr-util
 - [gtk4](https://www.gtk.org/docs/installations/)
 - [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) (for gtk-layer-shell support)
 - [tinysparql](https://gnome.pages.gitlab.gnome.org/tinysparql/) (for localsearch)
+
+## Usage
+
+Running seekr is as simple as
+
+```sh
+$ seekr
+```
+
+`seekr` can also be run silently by passing the `--silent` options.
+This will run seekr without open a window
 
 ## Configuration
 

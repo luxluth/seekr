@@ -23,8 +23,8 @@ jobs:
         run: cargo build --release
       - name: Test
         run: cargo test
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: fsearch
-          path: target/release/fsearch
+          name: seekr-x86_64
+          path: target/release/seekr
           retention-days: 5
