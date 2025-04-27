@@ -8,14 +8,20 @@ use rust_i18n::t;
 use search::SearchManager;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::Sender;
 use tokio::runtime::Runtime;
 use ui::entry_button::EntryButton;
+#[cfg(feature = "localsearch")]
+use ui::file_button::FileButton;
 
 mod app;
 mod bus;
 mod conf;
 mod icons;
 mod locale;
+#[cfg(feature = "localsearch")]
+mod localsearch;
+mod plugin;
 mod resources;
 mod search;
 mod ui;
@@ -24,7 +30,28 @@ rust_i18n::i18n!("locales", fallback = "en");
 
 static IN_MACRO_MODE: AtomicBool = AtomicBool::new(false);
 
-fn activate(config: conf::Config, app: &Application) {
+#[derive(Default, Clone, Copy)]
+struct StartupOptions {
+    silent: bool,
+}
+
+impl StartupOptions {
+    fn read_args(&mut self) {
+        for arg in std::env::args() {
+            match arg.as_str() {
+                "--silent" => self.silent = true,
+                _ => {}
+            }
+        }
+    }
+}
+
+fn activate(
+    config: conf::Config,
+    app: &Application,
+    opts: StartupOptions,
+    to_plugins: Sender<plugin::MessageToPlugins>,
+) {
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
     settings.set_gtk_icon_theme_name(Some(&config.general.theme));
 
@@ -59,7 +86,7 @@ fn activate(config: conf::Config, app: &Application) {
 
             window.init_layer_shell();
             window.set_keyboard_mode(gtk4_layer_shell::KeyboardMode::Exclusive);
-            window.set_namespace("seekr");
+            window.set_namespace(Some("seekr"));
             window.set_layer(Layer::Top);
 
             let anchors = [
@@ -121,6 +148,34 @@ fn activate(config: conf::Config, app: &Application) {
         .css_name("inputBox")
         .name("inputBox")
         .build();
+
+    let input_overlays = gtk::Overlay::builder()
+        .height_request(60)
+        .hexpand(true)
+        .vexpand(true)
+        .build();
+
+    let completion_box = gtk::Box::builder()
+        .name("completionBox")
+        .hexpand(true)
+        .vexpand(false)
+        .halign(gtk::Align::End)
+        .margin_end(10)
+        .build();
+
+    let completion_label = gtk::Label::builder()
+        .css_name("completionLabel")
+        .selectable(false)
+        .focusable(false)
+        .ellipsize(gtk::pango::EllipsizeMode::End)
+        .hexpand(false)
+        .vexpand(true)
+        .build();
+
+    completion_box.append(&completion_label);
+
+    input_overlays.add_overlay(&completion_box);
+    input_overlays.add_overlay(&input_container);
 
     let macro_hint = gtk::Label::builder().css_name("macroHint").build();
     macro_hint.set_visible(false);
@@ -187,6 +242,10 @@ fn activate(config: conf::Config, app: &Application) {
         input_container,
         #[strong]
         config,
+        #[strong]
+        to_plugins,
+        #[strong]
+        completion_label,
         move |e| {
             let term = e.text().to_string();
             if !term.is_empty() {
@@ -200,6 +259,7 @@ fn activate(config: conf::Config, app: &Application) {
                             macro_hint.set_visible(true);
                             IN_MACRO_MODE.store(true, Ordering::Relaxed);
                             e.set_text("");
+                            completion_label.set_text("");
                             macro_hint.set_css_classes(&[&macro_name]);
                             input_container.set_css_classes(&["macro_mode"]);
                         } else {
@@ -219,7 +279,18 @@ fn activate(config: conf::Config, app: &Application) {
                 }
             }
             if !IN_MACRO_MODE.load(Ordering::Relaxed) {
-                let _ = tomanager.send(search::SearchEvent::Term(term));
+                let _ = tomanager.send(search::SearchEvent::Term(term.clone()));
+                let _ = to_plugins.send(plugin::MessageToPlugins::Term(term.clone()));
+
+                completion_label.set_text("");
+                if !term.is_empty() {
+                    for suggest in &suggestions {
+                        if suggest.starts_with(&term) {
+                            completion_label.set_text(&suggest.replace('@', ""));
+                            break;
+                        }
+                    }
+                }
             }
         }
     ));
@@ -252,7 +323,7 @@ fn activate(config: conf::Config, app: &Application) {
     scroll_container.set_child(Some(&result_box));
     scroll_container.set_visible(false);
 
-    shell.append(&input_container);
+    shell.append(&input_overlays);
     shell.append(&scroll_container);
     window.set_child(Some(&shell));
 
@@ -322,6 +393,7 @@ fn activate(config: conf::Config, app: &Application) {
                 .css_classes(["answer"])
                 .halign(gtk::Align::Center)
                 .ellipsize(gtk::pango::EllipsizeMode::End)
+                .selectable(true)
                 .build();
             answer.set_text(&format!("{res}"));
             answer_box.append(&answer);
@@ -341,6 +413,8 @@ fn activate(config: conf::Config, app: &Application) {
         tomanager,
         #[strong]
         scroll_container,
+        #[strong]
+        config,
         #[strong]
         window,
         move |entries: Vec<app::AppEntry>| {
@@ -371,7 +445,76 @@ fn activate(config: conf::Config, app: &Application) {
         }
     );
 
-    window.present();
+    #[cfg(feature = "localsearch")]
+    let files_box = gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .spacing(2)
+        .name("filesBox")
+        .css_name("filesBox")
+        .build();
+
+    #[cfg(feature = "localsearch")]
+    let add_files = glib::clone!(
+        #[strong]
+        result_box,
+        #[strong]
+        files_box,
+        #[strong]
+        tomanager,
+        #[strong]
+        scroll_container,
+        #[strong]
+        entry,
+        #[strong]
+        window,
+        move |files: Vec<localsearch::FileData>| {
+            while let Some(child) = files_box.first_child() {
+                files_box.remove(&child);
+            }
+
+            let mut children = result_box.first_child();
+            let mut has_files_box = false;
+            while let Some(ch) = children {
+                if ch.widget_name().as_str() == "filesBox" {
+                    has_files_box = true;
+                    break;
+                }
+                children = ch.next_sibling();
+            }
+
+            if !IN_MACRO_MODE.load(Ordering::Relaxed)
+                && !entry.text().is_empty()
+                && !entry.text().to_string().starts_with("@")
+            {
+                if !files.is_empty() {
+                    scroll_container.set_visible(true);
+                    let title = gtk::Label::builder()
+                        .hexpand(true)
+                        .halign(gtk::Align::Start)
+                        .ellipsize(gtk::pango::EllipsizeMode::End)
+                        .css_name("title")
+                        .build();
+
+                    title.set_label(&t!("files").to_string());
+                    files_box.append(&title);
+                }
+
+                for files in files {
+                    let button = FileButton(&config, files, &tomanager);
+                    files_box.append(&button);
+                }
+
+                if !has_files_box {
+                    result_box.append(&files_box);
+                }
+            }
+            window.queue_resize();
+        }
+    );
+
+    if !opts.silent {
+        window.present();
+    }
 
     {
         glib::spawn_future_local(glib::clone!(async move {
@@ -383,6 +526,8 @@ fn activate(config: conf::Config, app: &Application) {
                     search::ManagerEvent::Close => {
                         window.close();
                     }
+                    #[cfg(feature = "localsearch")]
+                    search::ManagerEvent::LocalsearchData(file_datas) => add_files(file_datas),
                 }
             }
         }));
@@ -420,16 +565,38 @@ fn main() {
             .with_timer(tracing_subscriber::fmt::time::time())
             .init();
 
-        let config = conf::Config::parse(conf::init_config_dir());
-
         gtk::init().expect("Unable to init gtk");
-        load_css(config.css.clone(), None);
 
         let application = Application::new(Some(conf::APP_ID), Default::default());
+        let config_file_path = conf::init_config_dir();
+        let config_dir = config_file_path.parent().unwrap();
+        let mut pl = plugin::PluginLoader::new(config_dir);
+        pl.lookup();
+
+        let to_plugins = pl.sx.clone();
+
+        std::thread::spawn(move || {
+            pl.start();
+        });
 
         application.connect_activate(move |app| {
-            activate(config.clone(), app);
+            let mut opts = StartupOptions::default();
+            opts.read_args();
+
+            let config = conf::Config::parse(config_file_path.clone());
+            load_css(config.css.clone(), None);
+
+            activate(config.clone(), app, opts, to_plugins.clone());
         });
+
+        application.add_main_option(
+            "silent",
+            's'.try_into().unwrap(),
+            gtk::glib::OptionFlags::NONE,
+            gtk::glib::OptionArg::None,
+            &t!("silent_opt").to_string(),
+            None,
+        );
 
         application.run();
     }

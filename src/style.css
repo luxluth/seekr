@@ -1,8 +1,4 @@
-window,
-input,
-inputBox,
-resultBox,
-entry {
+window {
   background: #242424;
   color: #ffffff;
 }
@@ -16,13 +12,19 @@ window.gnome {
   border-radius: 12px;
 }
 
-inputBox {
+inputBox,
+completionBox {
   padding-right: 10px;
   padding-left: 10px;
   transition: ease-in-out 0.25s all;
 }
 
-input {
+completionLabel {
+  opacity: 0.5;
+}
+
+input,
+completionLabel {
   caret-color: #ffffff;
   font-size: 32px;
 }
@@ -35,7 +37,8 @@ input placeholder {
   opacity: 0.3;
 }
 
-entry {
+entry,
+file {
   margin: 10px;
   margin-top: 2.5px;
   margin-bottom: 2.5px;
@@ -45,20 +48,24 @@ entry {
   transition: background 0.1s ease-out;
 }
 
-entry:hover {
+entry:hover,
+file:hover {
   background: #303030;
 }
 
-entryIcon {
+entryIcon,
+fileIcon {
   min-width: 48px;
   min-height: 48px;
 }
 
-entryName {
+entryName,
+fileName {
   font-weight: bold;
 }
 
-entryDescription {
+entryDescription,
+fileDetails {
   opacity: 0.5;
   font-size: 0.875em;
 }

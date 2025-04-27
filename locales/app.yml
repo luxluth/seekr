@@ -20,3 +20,17 @@ expr_eval:
   zh: 表达式评估
   ja: 式評価
   es: Evaluación de expresiones
+
+silent_opt:
+  en: Run the application for the first time without showing the window
+  fr: Exécuter l'application pour la première fois sans afficher la fenêtre
+  zh: 第一次运行应用程序时不显示窗口
+  ja: アプリケーションを初回実行時にウィンドウを表示せずに実行する
+  es: Ejecutar la aplicación por primera vez sin mostrar la ventana
+
+files:
+  en: "Files"
+  fr: "Fichiers"
+  zh: "文件"
+  ja: "ファイル"
+  es: "Archivos"
