@@ -4,9 +4,10 @@
 
 _System search util for linux_
 
+![seekr-demo](./assets/seekr-demo.gif)
+
 </div>
 
-![seekr-demo](./assets/seekr-demo.gif)
 
 ## Installation
 
