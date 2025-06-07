@@ -134,9 +134,12 @@ fn activate(
         window,
         #[strong]
         tomanager,
+        #[strong]
+        entry,
         move |_, _| {
             let _ = tomanager.send(search::SearchEvent::Represent);
             window.present();
+            entry.grab_focus_without_selecting();
         }
     ));
     window.add_action(&represent_action);
