@@ -3,10 +3,17 @@ use std::{ffi::CStr, path::PathBuf};
 
 use glib_sys::{GError, g_clear_error, g_error_free};
 use gtk::glib::gobject_ffi::g_object_unref;
+use tracing::debug;
 use tracker_sys::{
     TrackerSparqlConnection, tracker_sparql_connection_query, tracker_sparql_cursor_get_n_columns,
     tracker_sparql_cursor_get_string, tracker_sparql_cursor_next,
 };
+
+macro_rules! c {
+    ($l:expr) => {
+        ::std::ffi::CString::new($l).unwrap().as_ptr() as *const ::core::ffi::c_char
+    };
+}
 
 #[derive(Debug, Clone)]
 pub struct FileData {
@@ -83,17 +90,15 @@ OFFSET 0
 LIMIT {limit}"#
     );
 
-    let query_str = format!("{query}\0");
+    let service_name = "org.freedesktop.Tracker3.Miner.Files";
 
     #[allow(unused_assignments)]
     let mut conn: *mut TrackerSparqlConnection = ptr::null_mut();
     let mut error: *mut GError = ptr::null_mut();
 
-    let service_name = "org.freedesktop.Tracker3.Miner.Files\0";
-
     conn = unsafe {
         tracker_sys::tracker_sparql_connection_bus_new(
-            service_name.as_ptr() as *const i8,
+            c!(service_name),
             ptr::null(),
             ptr::null_mut(),
             &mut error,
@@ -101,20 +106,19 @@ LIMIT {limit}"#
     };
 
     if conn.is_null() {
+        if !error.is_null() {
+            debug!("{:?} - {:?}", unsafe { *error }, unsafe {
+                CStr::from_ptr((*error).message)
+            });
+        }
         unsafe {
             g_clear_error(&mut error);
         }
         return Err("Could not establish a connection to Tracker".into());
     }
 
-    let cursor = unsafe {
-        tracker_sparql_connection_query(
-            conn,
-            query_str.as_str().as_ptr() as *const i8,
-            ptr::null_mut(),
-            &mut error,
-        )
-    };
+    let cursor =
+        unsafe { tracker_sparql_connection_query(conn, c!(query), ptr::null_mut(), &mut error) };
 
     if !error.is_null() {
         let err_msg: String;
