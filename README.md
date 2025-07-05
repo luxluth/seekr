@@ -27,7 +27,7 @@ cargo install seekr-util
 - [Rust](https://www.rust-lang.org/tools/install)
 - [gtk4](https://www.gtk.org/docs/installations/)
 - [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) (for gtk-layer-shell support)
-- [tinysparql](https://gnome.pages.gitlab.gnome.org/tinysparql/) (for localsearch)
+- [localsearch](https://gitlab.gnome.org/GNOME/localsearch) (for localsearch)
 
 ## Usage
 
