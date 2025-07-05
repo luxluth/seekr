@@ -37,7 +37,7 @@ name = "seekr"
 path = "src/main.rs"
 
 [features]
-default = ["localsearch"]
+default = []
 localsearch = ["dep:glib-sys", "dep:tracker-sys", "dep:url-escape", "dep:chrono"]
 gtk-layer-shell = ["dep:gtk4-layer-shell"]
 
