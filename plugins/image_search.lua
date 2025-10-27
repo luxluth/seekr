@@ -2,7 +2,7 @@
 --- @diagnostic disable: undefined-global
 
 local ImageSearch = {
-	name = "image_search",
+	name = "image",
 	title = "Images",
 	description = "Quick lookup of your images",
 	api_version = 1,

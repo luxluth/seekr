@@ -111,9 +111,7 @@ fn activate(
     }
 
     if let Ok(xdg_current_desktop) = std::env::var("XDG_CURRENT_DESKTOP") {
-        if xdg_current_desktop.to_lowercase() == "gnome" {
-            window.add_css_class("gnome");
-        }
+        window.add_css_class(&xdg_current_desktop.to_lowercase());
     }
 
     window.set_default_size(600, 0);

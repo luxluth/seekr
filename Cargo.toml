@@ -12,25 +12,26 @@ authors = ["luxluth <delphin.blehoussi93@gmail.com>"]
 
 [dependencies]
 exmex = "0.20.4"
-gtk = { version = "0.9.7", package = "gtk4", features = ["v4_16"] }
+gtk = { version = "0.10.1", package = "gtk4", features = ["v4_20"] }
 tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
-dbus = "0.9.7"
-freedesktop-desktop-entry = "=0.7.5"
+tracing-subscriber = "0.3.20"
+dbus = "0.9.9"
+freedesktop-desktop-entry = "0.7.19" # =0.7.5
 fuzzy-matcher = "0.3.7"
-async-channel = "2.3.1"
-tokio = { version = "1.45.1", features = ["rt", "rt-multi-thread", "sync"] }
+async-channel = "2.5.0"
+tokio = { version = "1.48", features = ["rt", "rt-multi-thread", "sync"] }
 fragile = "2.0.1"
 ini-roundtrip = "0.2.0"
 rust-i18n = "3.1.5"
 once_cell = "1.21.3"
-mlua = { version = "0.10.5", features = ["luajit", "vendored", "send"] }
+mlua = { version = "0.11.1", features = ["luajit", "vendored", "send"] }
 glob = "0.3.2"
-gtk4-layer-shell = { version = "0.5.0", optional = true }
-glib-sys = { version = "0.20.10", optional = true }
-tracker-sys = { version = "0.6.0", optional = true }
+gtk4-layer-shell = { version = "0.6.3", optional = true }
+glib-sys = { version = "=0.20.10", optional = true }
+tracker-sys = { version = "0.7.0", optional = true }
 url-escape = { version = "0.1.1", optional = true }
-chrono = { version = "0.4.41", default-features = false, features = ["clock", "std"], optional = true }
+chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"], optional = true }
+roxmltree = "0.21.1"
 
 [[bin]]
 name = "seekr"

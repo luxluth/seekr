@@ -6,7 +6,7 @@ use dbus::{
 use std::time::Duration;
 
 pub fn app_is_running() -> bool {
-    // chech the dbus for the APP_ID
+    // check the dbus for the APP_ID
     let c = Connection::new_session();
     match c {
         Ok(conn) => {

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, io::Read};
 
-// use gtk::prelude::*;
+// mod bindings;
+
 use mlua::prelude::*;
 use std::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, warn};
@@ -123,6 +124,7 @@ impl PluginLoader {
         let ctxt = Lua::new();
         let config_dir = config_dir.to_str().unwrap().to_string();
         let _ = ctxt.globals().set("seekr", SeekrGlobal(config_dir.clone()));
+        // let _ = ctxt.globals().set("gtk", bindings::GtkBinding);
         let (sx, rx) = mpsc::channel::<MessageToPlugins>();
 
         PluginLoader {
@@ -171,7 +173,11 @@ impl PluginLoader {
                                             if self.plugins.get(&name).is_none() {
                                                 self.plugins.insert(name, plug);
                                             } else {
-                                                warn!("A plugin named ({}) has already been loaded from ({})", name, filepath.display());
+                                                warn!(
+                                                    "A plugin named ({}) has already been loaded from ({})",
+                                                    name,
+                                                    filepath.display()
+                                                );
                                             }
                                         }
                                         Err(e) => {
