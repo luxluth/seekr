@@ -1,9 +1,9 @@
 use std::ptr;
 use std::{ffi::CStr, path::PathBuf};
 
-use glib_sys::{GError, g_clear_error, g_error_free};
+// use glib_sys::{GError, g_clear_error, g_error_free};
+// use tracing::debug;
 use gtk::glib::gobject_ffi::g_object_unref;
-use tracing::debug;
 use tracker_sys::{
     TrackerSparqlConnection, tracker_sparql_connection_query, tracker_sparql_cursor_get_n_columns,
     tracker_sparql_cursor_get_string, tracker_sparql_cursor_next,
@@ -94,46 +94,49 @@ LIMIT {limit}"#
 
     #[allow(unused_assignments)]
     let mut conn: *mut TrackerSparqlConnection = ptr::null_mut();
-    let mut error: *mut GError = ptr::null_mut();
+    // let mut error: *mut GError = ptr::null_mut();
+    // let error_ptr: *mut *mut GError = &mut error;
 
     conn = unsafe {
         tracker_sys::tracker_sparql_connection_bus_new(
             c!(service_name),
             ptr::null(),
             ptr::null_mut(),
-            &mut error,
+            ptr::null_mut(),
         )
     };
 
     if conn.is_null() {
-        if !error.is_null() {
-            debug!("{:?} - {:?}", unsafe { *error }, unsafe {
-                CStr::from_ptr((*error).message)
-            });
-        }
-        unsafe {
-            g_clear_error(&mut error);
-        }
+        // if !error.is_null() {
+        //     debug!("{:?} - {:?}", unsafe { *error }, unsafe {
+        //         CStr::from_ptr((*error).message)
+        //     });
+        //
+        //     unsafe {
+        //         g_clear_error(error_ptr);
+        //     }
+        // }
         return Err("Could not establish a connection to Tracker".into());
     }
 
-    let cursor =
-        unsafe { tracker_sparql_connection_query(conn, c!(query), ptr::null_mut(), &mut error) };
+    let cursor = unsafe {
+        tracker_sparql_connection_query(conn, c!(query), ptr::null_mut(), ptr::null_mut())
+    };
 
-    if !error.is_null() {
-        let err_msg: String;
-        unsafe {
-            err_msg = format!("{}", CStr::from_ptr((*error).message).to_str().unwrap());
-            g_error_free(error);
-        }
-        return Err(format!("Could not get search results: {}", err_msg).into());
-    }
+    // if !error.is_null() {
+    //     let err_msg: String;
+    //     unsafe {
+    //         err_msg = format!("{}", CStr::from_ptr((*error).message).to_str().unwrap());
+    //         g_error_free(error);
+    //     }
+    //     return Err(format!("Could not get search results: {}", err_msg).into());
+    // }
 
     if cursor.is_null() {
         return Err("No results were found matching your query".into());
     }
 
-    while unsafe { tracker_sparql_cursor_next(cursor, ptr::null_mut(), &mut error) == 1 } {
+    while unsafe { tracker_sparql_cursor_next(cursor, ptr::null_mut(), ptr::null_mut()) == 1 } {
         unsafe {
             let _ = tracker_sparql_cursor_get_n_columns(cursor);
             let uri = CStr::from_ptr(tracker_sparql_cursor_get_string(cursor, 0, ptr::null_mut()))
