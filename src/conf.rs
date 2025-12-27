@@ -13,6 +13,7 @@ pub const APP_ID: &str = "dev.luxluth.seekr";
 pub const DEFAULT_CONFIG: &str = include_str!("./default.conf");
 
 pub const DEFAULT_CSS: &str = include_str!("./style.css");
+pub const LUA_STUB: &str = include_str!("../plugins/seekr.lua");
 
 #[derive(Clone, Debug)]
 pub struct MacroDef(pub MacroName, pub String);
@@ -255,6 +256,7 @@ pub fn init_config_dir() -> std::path::PathBuf {
     }
 
     let config_file = config_dir.join("default.conf");
+    let seekr_file = config_dir.join("seekr.lua");
     debug!("config_path: {}", config_file.display());
 
     if !config_file.exists() {
@@ -264,6 +266,12 @@ pub fn init_config_dir() -> std::path::PathBuf {
                     .replace("%PLACEHOLDER%", &t!("search_placeholder").to_string())
                     .as_bytes(),
             );
+        }
+    }
+
+    if !seekr_file.exists() {
+        if let Ok(mut f) = std::fs::File::create(&seekr_file) {
+            let _ = f.write(LUA_STUB.as_bytes());
         }
     }
 
