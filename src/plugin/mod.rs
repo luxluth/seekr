@@ -2,6 +2,7 @@ use std::{collections::HashMap, io::Read};
 
 // mod bindings;
 
+use mlua::HookTriggers;
 use mlua::prelude::*;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -9,6 +10,25 @@ use tracing::{debug, error, warn};
 
 thread_local! {
     static CURRENT_SEQ: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+    static CURRENT_PLUGIN_NAME: std::cell::RefCell<String> = std::cell::RefCell::new(String::new());
+}
+
+fn check_validity(latest_seq: &Arc<Mutex<HashMap<String, u64>>>) -> LuaResult<LuaVmState> {
+    let seq = CURRENT_SEQ.with(|s| *s.borrow());
+    let name = CURRENT_PLUGIN_NAME.with(|s| s.borrow().clone());
+
+    if name.is_empty() {
+        return Ok(LuaVmState::Continue);
+    }
+
+    if let Ok(guard) = latest_seq.lock() {
+        if let Some(latest) = guard.get(&name) {
+            if seq < *latest {
+                return Err(LuaError::runtime("interrupted"));
+            }
+        }
+    }
+    Ok(LuaVmState::Continue)
 }
 
 #[derive(Debug, Clone)]
@@ -156,41 +176,25 @@ impl LuaUserData for SeekrGlobal {
         });
 
         methods.add_method("clear_results", |_lua, this, plugin_name: String| {
+            let _ = check_validity(&this.latest_seq)?;
             let seq = CURRENT_SEQ.with(|s| *s.borrow());
-            let latest = this
-                .latest_seq
-                .lock()
-                .unwrap()
-                .get(&plugin_name)
-                .copied()
-                .unwrap_or(0);
-            if seq >= latest {
-                let _ = this
-                    .tx_ui
-                    .send_blocking(PluginUiEvent::Clear { plugin_name, seq });
-            }
+            let _ = this
+                .tx_ui
+                .send_blocking(PluginUiEvent::Clear { plugin_name, seq });
             Ok(())
         });
 
         methods.add_method(
             "show_image_grid",
             |_lua, this, data: (String, Vec<String>, Option<String>)| {
+                let _ = check_validity(&this.latest_seq)?;
                 let seq = CURRENT_SEQ.with(|s| *s.borrow());
-                let latest = this
-                    .latest_seq
-                    .lock()
-                    .unwrap()
-                    .get(&data.0)
-                    .copied()
-                    .unwrap_or(0);
-                if seq >= latest {
-                    let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowImageGrid {
-                        plugin_name: data.0,
-                        images: data.1,
-                        subtitle: data.2,
-                        seq,
-                    });
-                }
+                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowImageGrid {
+                    plugin_name: data.0,
+                    images: data.1,
+                    subtitle: data.2,
+                    seq,
+                });
                 Ok(())
             },
         );
@@ -198,46 +202,31 @@ impl LuaUserData for SeekrGlobal {
         methods.add_method(
             "show_info_box",
             |_lua, this, data: (String, String, String)| {
+                let _ = check_validity(&this.latest_seq)?;
                 let seq = CURRENT_SEQ.with(|s| *s.borrow());
-                let latest = this
-                    .latest_seq
-                    .lock()
-                    .unwrap()
-                    .get(&data.0)
-                    .copied()
-                    .unwrap_or(0);
-                if seq >= latest {
-                    let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowInfoBox {
-                        plugin_name: data.0,
-                        title: data.1,
-                        body: data.2,
-                        seq,
-                    });
-                }
+                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowInfoBox {
+                    plugin_name: data.0,
+                    title: data.1,
+                    body: data.2,
+                    seq,
+                });
                 Ok(())
             },
         );
 
         methods.add_method("show_console", |_lua, this, data: (String, String)| {
+            let _ = check_validity(&this.latest_seq)?;
             let seq = CURRENT_SEQ.with(|s| *s.borrow());
-            let latest = this
-                .latest_seq
-                .lock()
-                .unwrap()
-                .get(&data.0)
-                .copied()
-                .unwrap_or(0);
-            if seq >= latest {
-                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowConsole {
-                    plugin_name: data.0,
-                    command: data.1,
-                    seq,
-                });
-            }
+            let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowConsole {
+                plugin_name: data.0,
+                command: data.1,
+                seq,
+            });
             Ok(())
         });
 
-        methods.add_method("glob", |_lua, _this, pattern: String| {
+        methods.add_method("glob", |_lua, this, pattern: String| {
+            let _ = check_validity(&this.latest_seq)?;
             let result = glob::glob(&pattern);
             if result.is_ok() {
                 let mut paths = vec![];
@@ -252,12 +241,14 @@ impl LuaUserData for SeekrGlobal {
             }
         });
 
-        methods.add_method("exec", |_lua, _this, cmd: String| {
+        methods.add_method("exec", |_lua, this, cmd: String| {
+            let _ = check_validity(&this.latest_seq)?;
             let _ = std::process::Command::new("sh").arg("-c").arg(cmd).spawn();
             Ok(())
         });
 
-        methods.add_method("read", |_lua, _this, cmd: String| {
+        methods.add_method("read", |_lua, this, cmd: String| {
+            let _ = check_validity(&this.latest_seq)?;
             if let Ok(output) = std::process::Command::new("sh").arg("-c").arg(cmd).output() {
                 if let Ok(stdout) = String::from_utf8(output.stdout) {
                     return Ok(stdout);
@@ -266,7 +257,8 @@ impl LuaUserData for SeekrGlobal {
             Ok(String::new())
         });
 
-        methods.add_method("json_to_lua", |lua, _this, json_str: String| {
+        methods.add_method("json_to_lua", |lua, this, json_str: String| {
+            let _ = check_validity(&this.latest_seq)?;
             if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
                 return Ok(json_to_lua_value(lua, &value).unwrap_or(LuaValue::Nil));
             }
@@ -316,7 +308,7 @@ pub struct PluginLoader {
     config_dir: String,
     rx: std::sync::Arc<std::sync::Mutex<Receiver<MessageToPlugins>>>,
     pub sx: Sender<MessageToPlugins>,
-    pub _tx_ui: async_channel::Sender<PluginUiEvent>,
+    pub tx_ui: async_channel::Sender<PluginUiEvent>,
     latest_seq: Arc<Mutex<HashMap<String, u64>>>,
     current_seq: u64,
 }
@@ -366,6 +358,11 @@ impl PluginLoader {
         let ctxt = Lua::new();
         let config_dir = config_dir.to_str().unwrap().to_string();
         let latest_seq = Arc::new(Mutex::new(HashMap::new()));
+        let hook_seq = latest_seq.clone();
+
+        let _ = ctxt.set_hook(HookTriggers::EVERY_LINE, move |_lua, _debug| {
+            check_validity(&hook_seq)
+        });
 
         let _ = ctxt.globals().set(
             "seekr",
@@ -375,7 +372,7 @@ impl PluginLoader {
                 latest_seq: latest_seq.clone(),
             },
         );
-        // let _ = ctxt.globals().set("gtk", bindings::GtkBinding);
+
         let (sx, rx) = mpsc::channel::<MessageToPlugins>();
 
         PluginLoader {
@@ -384,7 +381,7 @@ impl PluginLoader {
             config_dir,
             rx: std::sync::Arc::new(std::sync::Mutex::new(rx)),
             sx,
-            _tx_ui: tx_ui,
+            tx_ui,
             latest_seq,
             current_seq: 0,
         }
@@ -402,7 +399,7 @@ impl PluginLoader {
                 MessageToPlugins::Term(term) => {
                     self.current_seq += 1;
                     let _ = self
-                        ._tx_ui
+                        .tx_ui
                         .send_blocking(PluginUiEvent::NewSearch(self.current_seq));
 
                     for (_, plugin) in self.plugins.iter() {
@@ -415,11 +412,14 @@ impl PluginLoader {
                                 let on_input = on_input.clone();
                                 let term = term.clone();
                                 let seq = self.current_seq;
-                                let tx_ui = self._tx_ui.clone();
+                                let tx_ui = self.tx_ui.clone();
                                 let plugin_name = plugin.name.clone();
 
                                 std::thread::spawn(move || {
                                     CURRENT_SEQ.with(|s| *s.borrow_mut() = seq);
+                                    CURRENT_PLUGIN_NAME
+                                        .with(|s| *s.borrow_mut() = plugin_name.clone());
+
                                     let _ = tx_ui.send_blocking(PluginUiEvent::Processing {
                                         plugin_name: plugin_name.clone(),
                                         state: true,
