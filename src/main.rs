@@ -51,6 +51,7 @@ fn activate(
     app: &Application,
     opts: StartupOptions,
     to_plugins: Sender<plugin::MessageToPlugins>,
+    rx_ui: async_channel::Receiver<plugin::PluginUiEvent>,
 ) {
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
     settings.set_gtk_icon_theme_name(Some(&config.general.theme));
@@ -513,6 +514,14 @@ fn activate(
         }
     );
 
+    ui::handler::setup(
+        rx_ui,
+        to_plugins.clone(),
+        result_box,
+        scroll_container.clone(),
+        window.clone(),
+    );
+
     if !opts.silent {
         window.present();
     }
@@ -571,7 +580,10 @@ fn main() {
         let application = Application::new(Some(conf::APP_ID), Default::default());
         let config_file_path = conf::init_config_dir();
         let config_dir = config_file_path.parent().unwrap();
-        let mut pl = plugin::PluginLoader::new(config_dir);
+
+        let (tx_ui, rx_ui) = async_channel::unbounded();
+
+        let mut pl = plugin::PluginLoader::new(config_dir, tx_ui);
         pl.lookup();
 
         let to_plugins = pl.sx.clone();
@@ -587,7 +599,7 @@ fn main() {
             let config = conf::Config::parse(config_file_path.clone());
             load_css(config.css.clone(), None);
 
-            activate(config.clone(), app, opts, to_plugins.clone());
+            activate(config.clone(), app, opts, to_plugins.clone(), rx_ui.clone());
         });
 
         application.add_main_option(

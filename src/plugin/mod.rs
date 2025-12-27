@@ -7,13 +7,23 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use tracing::{debug, error, warn};
 
 #[derive(Debug, Clone)]
+pub enum Trigger {
+    Any,
+    Command(String),
+    Contains(String),
+}
+
+#[derive(Debug, Clone)]
 pub struct Plugin {
     __api_version: i64,
     name: String,
     description: Option<String>,
     title: Option<String>,
 
+    triggers: Vec<Trigger>,
+
     on_input: Option<LuaFunction>,
+    on_activate: Option<LuaFunction>,
     on_startup: Option<LuaFunction>,
     on_exit: Option<LuaFunction>,
 
@@ -32,7 +42,10 @@ impl Plugin {
                 description: None,
                 title: None,
 
+                triggers: vec![],
+
                 on_input: None,
+                on_activate: None,
                 on_startup: None,
                 on_exit: None,
 
@@ -47,8 +60,36 @@ impl Plugin {
                 plug.title = Some(title.to_string_lossy());
             }
 
+            if let Ok(triggers) = plug.table.raw_get::<LuaTable>("triggers") {
+                for pair in triggers.pairs::<LuaValue, LuaValue>() {
+                    let (_, value) = pair?;
+                    if let LuaValue::String(s) = value {
+                        let s = s.to_string_lossy();
+                        if s == "any" {
+                            plug.triggers.push(Trigger::Any);
+                        } else if s.starts_with("command=") {
+                            let cmd = s.replace("command=", "");
+                            plug.triggers.push(Trigger::Command(cmd));
+                        } else if s.starts_with("contains=") {
+                            let cnt = s.replace("contains=", "");
+                            plug.triggers.push(Trigger::Contains(cnt));
+                        }
+                    }
+                }
+            }
+
+            // Default trigger if none specified
+            if plug.triggers.is_empty() {
+                plug.triggers
+                    .push(Trigger::Command(format!("/{}", plug.name)));
+            }
+
             if let Ok(on_input) = plug.table.raw_get::<LuaFunction>("onInput") {
                 plug.on_input = Some(on_input);
+            }
+
+            if let Ok(on_activate) = plug.table.raw_get::<LuaFunction>("onActivate") {
+                plug.on_activate = Some(on_activate);
             }
 
             if let Ok(on_exit) = plug.table.raw_get::<LuaFunction>("onExit") {
@@ -64,13 +105,35 @@ impl Plugin {
             Err(LuaError::external("This is not a valid seekr plugin"))
         }
     }
+
+    pub fn matches(&self, term: &str) -> bool {
+        for trigger in &self.triggers {
+            match trigger {
+                Trigger::Any => return true,
+                Trigger::Command(cmd) => {
+                    if term.starts_with(cmd) {
+                        return true;
+                    }
+                }
+                Trigger::Contains(cnt) => {
+                    if term.contains(cnt) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
 }
 
-struct SeekrGlobal(String);
+struct SeekrGlobal {
+    config_dir: String,
+    tx_ui: async_channel::Sender<PluginUiEvent>,
+}
 
 impl LuaUserData for SeekrGlobal {
     fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("config_dir", |_, this| Ok(this.0.clone()));
+        fields.add_field_method_get("config_dir", |_, this| Ok(this.config_dir.clone()));
     }
 
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
@@ -83,6 +146,45 @@ impl LuaUserData for SeekrGlobal {
 
         methods.add_method("log", |_lua, _this, data: (String, String)| {
             debug!("{} :: {}", data.0, data.1);
+            Ok(())
+        });
+
+        methods.add_method("clear_results", |_lua, this, plugin_name: String| {
+            let _ = this
+                .tx_ui
+                .send_blocking(PluginUiEvent::Clear { plugin_name });
+            Ok(())
+        });
+
+        methods.add_method(
+            "show_image_grid",
+            |_lua, this, data: (String, Vec<String>, Option<String>)| {
+                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowImageGrid {
+                    plugin_name: data.0,
+                    images: data.1,
+                    subtitle: data.2,
+                });
+                Ok(())
+            },
+        );
+
+        methods.add_method(
+            "show_info_box",
+            |_lua, this, data: (String, String, String)| {
+                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowInfoBox {
+                    plugin_name: data.0,
+                    title: data.1,
+                    body: data.2,
+                });
+                Ok(())
+            },
+        );
+
+        methods.add_method("show_console", |_lua, this, data: (String, String)| {
+            let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowConsole {
+                plugin_name: data.0,
+                command: data.1,
+            });
             Ok(())
         });
 
@@ -101,7 +203,60 @@ impl LuaUserData for SeekrGlobal {
             }
         });
 
-        // methods.add_meta_method(LuaMetaMethod::Add, |_, this, value: i32| Ok(this.0 + value));
+        methods.add_method("exec", |_lua, _this, cmd: String| {
+            let _ = std::process::Command::new("sh").arg("-c").arg(cmd).spawn();
+            Ok(())
+        });
+
+        methods.add_method("read", |_lua, _this, cmd: String| {
+            if let Ok(output) = std::process::Command::new("sh").arg("-c").arg(cmd).output() {
+                if let Ok(stdout) = String::from_utf8(output.stdout) {
+                    return Ok(stdout);
+                }
+            }
+            Ok(String::new())
+        });
+
+        methods.add_method("json_to_lua", |lua, _this, json_str: String| {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                return Ok(json_to_lua_value(lua, &value).unwrap_or(LuaValue::Nil));
+            }
+            Ok(LuaValue::Nil)
+        });
+    }
+}
+
+fn json_to_lua_value<'lua>(
+    lua: &'lua Lua,
+    value: &serde_json::Value,
+) -> Result<LuaValue, LuaError> {
+    match value {
+        serde_json::Value::Null => Ok(LuaValue::Nil),
+        serde_json::Value::Bool(b) => Ok(LuaValue::Boolean(*b)),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Ok(LuaValue::Integer(i))
+            } else if let Some(f) = n.as_f64() {
+                Ok(LuaValue::Number(f))
+            } else {
+                Ok(LuaValue::Nil)
+            }
+        }
+        serde_json::Value::String(s) => Ok(LuaValue::String(lua.create_string(s)?)),
+        serde_json::Value::Array(arr) => {
+            let table = lua.create_table()?;
+            for (i, v) in arr.iter().enumerate() {
+                table.set(i + 1, json_to_lua_value(lua, v)?)?;
+            }
+            Ok(LuaValue::Table(table))
+        }
+        serde_json::Value::Object(obj) => {
+            let table = lua.create_table()?;
+            for (k, v) in obj {
+                table.set(k.as_str(), json_to_lua_value(lua, v)?)?;
+            }
+            Ok(LuaValue::Table(table))
+        }
     }
 }
 
@@ -112,18 +267,50 @@ pub struct PluginLoader {
     config_dir: String,
     rx: std::sync::Arc<std::sync::Mutex<Receiver<MessageToPlugins>>>,
     pub sx: Sender<MessageToPlugins>,
+    pub _tx_ui: async_channel::Sender<PluginUiEvent>,
 }
 
 #[derive(Debug, Clone)]
 pub enum MessageToPlugins {
     Term(String),
+    Activate {
+        plugin_name: String,
+        payload: String,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum PluginUiEvent {
+    ShowImageGrid {
+        plugin_name: String,
+        images: Vec<String>,
+        subtitle: Option<String>,
+    },
+    ShowInfoBox {
+        plugin_name: String,
+        title: String,
+        body: String,
+    },
+    ShowConsole {
+        plugin_name: String,
+        command: String,
+    },
+    Clear {
+        plugin_name: String,
+    },
 }
 
 impl PluginLoader {
-    pub fn new(config_dir: &std::path::Path) -> Self {
+    pub fn new(config_dir: &std::path::Path, tx_ui: async_channel::Sender<PluginUiEvent>) -> Self {
         let ctxt = Lua::new();
         let config_dir = config_dir.to_str().unwrap().to_string();
-        let _ = ctxt.globals().set("seekr", SeekrGlobal(config_dir.clone()));
+        let _ = ctxt.globals().set(
+            "seekr",
+            SeekrGlobal {
+                config_dir: config_dir.clone(),
+                tx_ui: tx_ui.clone(),
+            },
+        );
         // let _ = ctxt.globals().set("gtk", bindings::GtkBinding);
         let (sx, rx) = mpsc::channel::<MessageToPlugins>();
 
@@ -133,6 +320,7 @@ impl PluginLoader {
             config_dir,
             rx: std::sync::Arc::new(std::sync::Mutex::new(rx)),
             sx,
+            _tx_ui: tx_ui,
         }
     }
 
@@ -147,8 +335,24 @@ impl PluginLoader {
             match msg {
                 MessageToPlugins::Term(term) => {
                     for (_, plugin) in self.plugins.iter() {
-                        if plugin.on_input.is_some() {
-                            let _ = plugin.on_input.clone().unwrap().call::<()>(term.clone());
+                        if plugin.matches(&term) {
+                            if let Some(on_input) = &plugin.on_input {
+                                let on_input = on_input.clone();
+                                let term = term.clone();
+                                std::thread::spawn(move || {
+                                    let _ = on_input.call::<()>(term);
+                                });
+                            }
+                        }
+                    }
+                }
+                MessageToPlugins::Activate {
+                    plugin_name,
+                    payload,
+                } => {
+                    if let Some(plugin) = self.plugins.get(&plugin_name) {
+                        if let Some(on_activate) = &plugin.on_activate {
+                            let _ = on_activate.call::<()>(payload);
                         }
                     }
                 }
@@ -219,18 +423,6 @@ impl PluginLoader {
         }
 
         let elapsed = start.elapsed();
-        if elapsed.as_millis() == 0 {
-            debug!(
-                "{} plugin(s) loaded in {}µs",
-                self.plugins.len(),
-                start.elapsed().as_micros()
-            );
-        } else {
-            debug!(
-                "{} plugin(s) loaded in {}ms",
-                self.plugins.len(),
-                start.elapsed().as_millis()
-            );
-        }
+        debug!("{} plugin(s) loaded in {elapsed:?}", self.plugins.len());
     }
 }
