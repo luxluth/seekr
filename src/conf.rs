@@ -6,6 +6,9 @@ use std::{
 };
 use tracing::{debug, warn};
 
+#[cfg(debug_assertions)]
+pub const APP_ID: &str = "dev.luxluth.seekr_debug";
+#[cfg(not(debug_assertions))]
 pub const APP_ID: &str = "dev.luxluth.seekr";
 pub const DEFAULT_CONFIG: &str = include_str!("./default.conf");
 

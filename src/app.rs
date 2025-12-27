@@ -1,4 +1,4 @@
-use freedesktop_desktop_entry::{get_languages_from_env, DesktopEntry};
+use freedesktop_desktop_entry::{DesktopEntry, get_languages_from_env};
 use std::{path::PathBuf, process::Command};
 use tracing::debug;
 

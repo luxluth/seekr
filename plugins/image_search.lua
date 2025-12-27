@@ -7,6 +7,7 @@ local ImageSearch = {
 	description = "Quick lookup of your images",
 	api_version = 1,
 	index = {},
+	triggers = { "command=/image" },
 }
 
 local extensions = { ".png", ".jpeg", ".jpg", ".jxl", ".tif", ".gif" }
@@ -37,7 +38,38 @@ end
 
 --- @param text string
 function ImageSearch.onInput(text)
-	seekr:log(ImageSearch.name, "recieved '" .. text .. "'")
+	seekr:clear_results(ImageSearch.name)
+	if text == "" then
+		return
+	end
+
+	-- Remove the command trigger if present (e.g. "/image ")
+	local query = text:gsub("^/image%s*", "")
+
+	if query == "" then
+		-- maybe show all? or recent?
+		return
+	end
+
+	local count = 0
+	local images = {}
+	for _, path in pairs(ImageSearch.index) do
+		if path:lower():find(query:lower(), 1, true) then
+			table.insert(images, path)
+			count = count + 1
+			if count > 20 then
+				break
+			end -- Limit results
+		end
+	end
+
+	if #images > 0 then
+		seekr:show_image_grid(ImageSearch.name, images, "Found " .. #images .. " images")
+	end
+end
+function ImageSearch.onActivate(payload)
+	seekr:exec("xdg-open '" .. payload .. "'")
+	seekr:close()
 end
 
 function ImageSearch.onExit() end

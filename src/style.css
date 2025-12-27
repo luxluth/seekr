@@ -123,3 +123,22 @@ macroHint {
   background-color: #fabb05;
   color: #222222;
 }
+
+imageGrid .subtitle {
+  font-weight: 400;
+  font-size: 1em;
+  font-style: italic;
+  opacity: 0.7;
+  padding: 10px;
+}
+
+infoBox .info_title {
+  font-size: 3rem;
+}
+
+infoBox .info_body {
+  background: #303030;
+  padding: 1em;
+  border-radius: 8px;
+  font-family: "IosevkaTerm NFP", monospace;
+}
