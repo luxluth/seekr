@@ -4,7 +4,12 @@ use std::{collections::HashMap, io::Read};
 
 use mlua::prelude::*;
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
 use tracing::{debug, error, warn};
+
+thread_local! {
+    static CURRENT_SEQ: std::cell::RefCell<u64> = std::cell::RefCell::new(0);
+}
 
 #[derive(Debug, Clone)]
 pub enum Trigger {
@@ -129,6 +134,7 @@ impl Plugin {
 struct SeekrGlobal {
     config_dir: String,
     tx_ui: async_channel::Sender<PluginUiEvent>,
+    latest_seq: Arc<Mutex<HashMap<String, u64>>>,
 }
 
 impl LuaUserData for SeekrGlobal {
@@ -150,20 +156,41 @@ impl LuaUserData for SeekrGlobal {
         });
 
         methods.add_method("clear_results", |_lua, this, plugin_name: String| {
-            let _ = this
-                .tx_ui
-                .send_blocking(PluginUiEvent::Clear { plugin_name });
+            let seq = CURRENT_SEQ.with(|s| *s.borrow());
+            let latest = this
+                .latest_seq
+                .lock()
+                .unwrap()
+                .get(&plugin_name)
+                .copied()
+                .unwrap_or(0);
+            if seq >= latest {
+                let _ = this
+                    .tx_ui
+                    .send_blocking(PluginUiEvent::Clear { plugin_name, seq });
+            }
             Ok(())
         });
 
         methods.add_method(
             "show_image_grid",
             |_lua, this, data: (String, Vec<String>, Option<String>)| {
-                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowImageGrid {
-                    plugin_name: data.0,
-                    images: data.1,
-                    subtitle: data.2,
-                });
+                let seq = CURRENT_SEQ.with(|s| *s.borrow());
+                let latest = this
+                    .latest_seq
+                    .lock()
+                    .unwrap()
+                    .get(&data.0)
+                    .copied()
+                    .unwrap_or(0);
+                if seq >= latest {
+                    let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowImageGrid {
+                        plugin_name: data.0,
+                        images: data.1,
+                        subtitle: data.2,
+                        seq,
+                    });
+                }
                 Ok(())
             },
         );
@@ -171,20 +198,42 @@ impl LuaUserData for SeekrGlobal {
         methods.add_method(
             "show_info_box",
             |_lua, this, data: (String, String, String)| {
-                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowInfoBox {
-                    plugin_name: data.0,
-                    title: data.1,
-                    body: data.2,
-                });
+                let seq = CURRENT_SEQ.with(|s| *s.borrow());
+                let latest = this
+                    .latest_seq
+                    .lock()
+                    .unwrap()
+                    .get(&data.0)
+                    .copied()
+                    .unwrap_or(0);
+                if seq >= latest {
+                    let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowInfoBox {
+                        plugin_name: data.0,
+                        title: data.1,
+                        body: data.2,
+                        seq,
+                    });
+                }
                 Ok(())
             },
         );
 
         methods.add_method("show_console", |_lua, this, data: (String, String)| {
-            let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowConsole {
-                plugin_name: data.0,
-                command: data.1,
-            });
+            let seq = CURRENT_SEQ.with(|s| *s.borrow());
+            let latest = this
+                .latest_seq
+                .lock()
+                .unwrap()
+                .get(&data.0)
+                .copied()
+                .unwrap_or(0);
+            if seq >= latest {
+                let _ = this.tx_ui.send_blocking(PluginUiEvent::ShowConsole {
+                    plugin_name: data.0,
+                    command: data.1,
+                    seq,
+                });
+            }
             Ok(())
         });
 
@@ -268,6 +317,8 @@ pub struct PluginLoader {
     rx: std::sync::Arc<std::sync::Mutex<Receiver<MessageToPlugins>>>,
     pub sx: Sender<MessageToPlugins>,
     pub _tx_ui: async_channel::Sender<PluginUiEvent>,
+    latest_seq: Arc<Mutex<HashMap<String, u64>>>,
+    current_seq: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -281,22 +332,32 @@ pub enum MessageToPlugins {
 
 #[derive(Debug, Clone)]
 pub enum PluginUiEvent {
+    NewSearch(u64),
+    Processing {
+        plugin_name: String,
+        state: bool,
+        seq: u64,
+    },
     ShowImageGrid {
         plugin_name: String,
         images: Vec<String>,
         subtitle: Option<String>,
+        seq: u64,
     },
     ShowInfoBox {
         plugin_name: String,
         title: String,
         body: String,
+        seq: u64,
     },
     ShowConsole {
         plugin_name: String,
         command: String,
+        seq: u64,
     },
     Clear {
         plugin_name: String,
+        seq: u64,
     },
 }
 
@@ -304,11 +365,14 @@ impl PluginLoader {
     pub fn new(config_dir: &std::path::Path, tx_ui: async_channel::Sender<PluginUiEvent>) -> Self {
         let ctxt = Lua::new();
         let config_dir = config_dir.to_str().unwrap().to_string();
+        let latest_seq = Arc::new(Mutex::new(HashMap::new()));
+
         let _ = ctxt.globals().set(
             "seekr",
             SeekrGlobal {
                 config_dir: config_dir.clone(),
                 tx_ui: tx_ui.clone(),
+                latest_seq: latest_seq.clone(),
             },
         );
         // let _ = ctxt.globals().set("gtk", bindings::GtkBinding);
@@ -321,10 +385,12 @@ impl PluginLoader {
             rx: std::sync::Arc::new(std::sync::Mutex::new(rx)),
             sx,
             _tx_ui: tx_ui,
+            latest_seq,
+            current_seq: 0,
         }
     }
 
-    pub fn start(self) {
+    pub fn start(mut self) {
         for (_, plugin) in self.plugins.iter() {
             if plugin.on_startup.is_some() {
                 let _ = plugin.on_startup.clone().unwrap().clone().call::<()>(());
@@ -334,13 +400,37 @@ impl PluginLoader {
         while let Ok(msg) = self.rx.lock().unwrap().recv() {
             match msg {
                 MessageToPlugins::Term(term) => {
+                    self.current_seq += 1;
+                    let _ = self
+                        ._tx_ui
+                        .send_blocking(PluginUiEvent::NewSearch(self.current_seq));
+
                     for (_, plugin) in self.plugins.iter() {
                         if plugin.matches(&term) {
+                            self.latest_seq
+                                .lock()
+                                .unwrap()
+                                .insert(plugin.name.clone(), self.current_seq);
                             if let Some(on_input) = &plugin.on_input {
                                 let on_input = on_input.clone();
                                 let term = term.clone();
+                                let seq = self.current_seq;
+                                let tx_ui = self._tx_ui.clone();
+                                let plugin_name = plugin.name.clone();
+
                                 std::thread::spawn(move || {
+                                    CURRENT_SEQ.with(|s| *s.borrow_mut() = seq);
+                                    let _ = tx_ui.send_blocking(PluginUiEvent::Processing {
+                                        plugin_name: plugin_name.clone(),
+                                        state: true,
+                                        seq,
+                                    });
                                     let _ = on_input.call::<()>(term);
+                                    let _ = tx_ui.send_blocking(PluginUiEvent::Processing {
+                                        plugin_name,
+                                        state: false,
+                                        seq,
+                                    });
                                 });
                             }
                         }
