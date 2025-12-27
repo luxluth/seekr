@@ -264,6 +264,11 @@ impl LuaUserData for SeekrGlobal {
             }
             Ok(LuaValue::Nil)
         });
+
+        methods.add_method("close", |_lua, this, (): ()| {
+            let _ = this.tx_ui.send_blocking(PluginUiEvent::Close);
+            Ok(())
+        });
     }
 }
 
@@ -351,6 +356,7 @@ pub enum PluginUiEvent {
         plugin_name: String,
         seq: u64,
     },
+    Close,
 }
 
 impl PluginLoader {

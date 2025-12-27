@@ -159,6 +159,9 @@ pub fn setup(
                             }
                         }
                     }
+                    PluginUiEvent::Close => {
+                        window.close();
+                    }
                 }
 
                 window.queue_resize();

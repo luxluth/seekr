@@ -43,3 +43,5 @@ function seekr:read(cmd) end
 --- @param json string
 --- @return table|nil
 function seekr:json_to_lua(json) end
+
+function seekr:close() end

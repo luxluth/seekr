@@ -69,6 +69,7 @@ function ImageSearch.onInput(text)
 end
 function ImageSearch.onActivate(payload)
 	seekr:exec("xdg-open '" .. payload .. "'")
+	seekr:close()
 end
 
 function ImageSearch.onExit() end
