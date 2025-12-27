@@ -2,7 +2,7 @@
 
 ## planed features
 
-- [ ] extension system
+- [x] extension system
 - [ ] extensions repository
 - [ ] rink ?
 
