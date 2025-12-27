@@ -121,7 +121,13 @@ macroHint {
   padding-left: 10px;
   padding-right: 10px;
   background-color: #fabb05;
+  font-family: "Product Sans", sans-serif;
   color: #222222;
+}
+
+macroHint.sh {
+  background-color: #181818;
+  color: #ffffff;
 }
 
 imageGrid .subtitle {
@@ -141,4 +147,19 @@ infoBox .info_body {
   padding: 1em;
   border-radius: 8px;
   font-family: "IosevkaTerm NFP", monospace;
+}
+
+infoBox .info_body {
+  background: #303030;
+  padding: 1em;
+  border-radius: 8px;
+  font-family: "IosevkaTerm NFP", monospace;
+}
+
+consoleBox .console_view {
+  background-color: #303030;
+  font-family: "IosevkaTerm NFP", monospace;
+  font-weight: bold;
+  padding: 1em;
+  border-radius: 8px;
 }

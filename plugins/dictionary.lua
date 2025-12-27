@@ -1,6 +1,7 @@
 --- @meta '../seekr.lua'
 --- @diagnostic disable: undefined-global
 
+--- @class Plugin
 local Dictionary = {
 	name = "dictionary",
 	title = "Dictionary",
@@ -16,7 +17,7 @@ local function escape_markup(str)
 end
 
 --- @param text string
-function Dictionary.onInput(text)
+function Dictionary.onEnter(text)
 	seekr:clear_results(Dictionary.name)
 
 	-- Strip command
@@ -87,4 +88,3 @@ function Dictionary.onExit() end
 function Dictionary.onStartup() end
 
 return Dictionary
-

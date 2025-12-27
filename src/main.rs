@@ -67,11 +67,11 @@ fn activate(
 
     #[cfg(feature = "gtk-layer-shell")]
     {
-        window.add_css_class("is_layer");
         if config.is_wayland
             && config.gtk_layer_shell_conf.active
             && gtk4_layer_shell::is_supported()
         {
+            window.add_css_class("is_layer");
             let key_press_controller = gtk::EventControllerKey::new();
             key_press_controller.connect_key_pressed(glib::clone!(
                 #[strong]
@@ -189,6 +189,8 @@ fn activate(
         config,
         #[strong]
         tomanager,
+        #[strong]
+        to_plugins,
         move |e| {
             let entry = e.text().to_string();
             if IN_MACRO_MODE.load(Ordering::Relaxed) {
@@ -210,6 +212,8 @@ fn activate(
 
                     let _ = tomanager.send(search::SearchEvent::RequestClose);
                 }
+            } else {
+                let _ = to_plugins.send(plugin::MessageToPlugins::Enter(entry));
             }
         }
     ));

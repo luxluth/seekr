@@ -13,13 +13,14 @@ impl Console {
         let container = gtk::Box::builder()
             .orientation(gtk::Orientation::Vertical)
             .spacing(5)
-            .css_classes(["console_box"])
+            .css_name("consoleBox")
             .build();
 
         let buffer = gtk::TextBuffer::new(None);
         let view = gtk::TextView::builder()
             .buffer(&buffer)
             .editable(false)
+            .css_classes(["console_view"])
             .monospace(true)
             .wrap_mode(gtk::WrapMode::WordChar)
             .height_request(200) // "Shown Last 10 lines" - initial height approximation
@@ -54,16 +55,9 @@ impl Console {
         ));
 
         thread::spawn(move || {
-            // Simplified command splitting
-            let parts: Vec<&str> = cmd_string.split_whitespace().collect();
-            if parts.is_empty() {
-                return;
-            }
-
-            let mut cmd = std::process::Command::new(parts[0]);
-            if parts.len() > 1 {
-                cmd.args(&parts[1..]);
-            }
+            let mut cmd = std::process::Command::new("sh");
+            cmd.arg("-c");
+            cmd.arg(&cmd_string);
 
             cmd.stdout(Stdio::piped());
             cmd.stderr(Stdio::piped()); // Capture stderr too?

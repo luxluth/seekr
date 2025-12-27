@@ -48,6 +48,7 @@ pub struct Plugin {
     triggers: Vec<Trigger>,
 
     on_input: Option<LuaFunction>,
+    on_enter: Option<LuaFunction>,
     on_activate: Option<LuaFunction>,
     on_startup: Option<LuaFunction>,
     on_exit: Option<LuaFunction>,
@@ -70,6 +71,7 @@ impl Plugin {
                 triggers: vec![],
 
                 on_input: None,
+                on_enter: None,
                 on_activate: None,
                 on_startup: None,
                 on_exit: None,
@@ -111,6 +113,10 @@ impl Plugin {
 
             if let Ok(on_input) = plug.table.raw_get::<LuaFunction>("onInput") {
                 plug.on_input = Some(on_input);
+            }
+
+            if let Ok(on_enter) = plug.table.raw_get::<LuaFunction>("onEnter") {
+                plug.on_enter = Some(on_enter);
             }
 
             if let Ok(on_activate) = plug.table.raw_get::<LuaFunction>("onActivate") {
@@ -321,6 +327,7 @@ pub struct PluginLoader {
 #[derive(Debug, Clone)]
 pub enum MessageToPlugins {
     Term(String),
+    Enter(String),
     Activate {
         plugin_name: String,
         payload: String,
@@ -432,6 +439,46 @@ impl PluginLoader {
                                         seq,
                                     });
                                     let _ = on_input.call::<()>(term);
+                                    let _ = tx_ui.send_blocking(PluginUiEvent::Processing {
+                                        plugin_name,
+                                        state: false,
+                                        seq,
+                                    });
+                                });
+                            }
+                        }
+                    }
+                }
+                MessageToPlugins::Enter(term) => {
+                    self.current_seq += 1;
+                    let _ = self
+                        .tx_ui
+                        .send_blocking(PluginUiEvent::NewSearch(self.current_seq));
+
+                    for (_, plugin) in self.plugins.iter() {
+                        if plugin.matches(&term) {
+                            self.latest_seq
+                                .lock()
+                                .unwrap()
+                                .insert(plugin.name.clone(), self.current_seq);
+                            if let Some(on_enter) = &plugin.on_enter {
+                                let on_enter = on_enter.clone();
+                                let term = term.clone();
+                                let seq = self.current_seq;
+                                let tx_ui = self.tx_ui.clone();
+                                let plugin_name = plugin.name.clone();
+
+                                std::thread::spawn(move || {
+                                    CURRENT_SEQ.with(|s| *s.borrow_mut() = seq);
+                                    CURRENT_PLUGIN_NAME
+                                        .with(|s| *s.borrow_mut() = plugin_name.clone());
+
+                                    let _ = tx_ui.send_blocking(PluginUiEvent::Processing {
+                                        plugin_name: plugin_name.clone(),
+                                        state: true,
+                                        seq,
+                                    });
+                                    let _ = on_enter.call::<()>(term);
                                     let _ = tx_ui.send_blocking(PluginUiEvent::Processing {
                                         plugin_name,
                                         state: false,

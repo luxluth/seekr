@@ -4,6 +4,18 @@
 --- @field config_dir string
 seekr = {}
 
+--- @class Plugin
+--- @field name string
+--- @field api_version integer
+--- @field title string|nil
+--- @field description string|nil
+--- @field triggers string[]|nil
+--- @field onInput (fun(input: string))|nil
+--- @field onEnter (fun(input: string))|nil
+--- @field onActivate (fun(payload: string))|nil
+--- @field onStartup (fun())|nil
+--- @field onExit (fun())|nil
+
 --- @param key string
 --- @return string
 function seekr:env(key) end

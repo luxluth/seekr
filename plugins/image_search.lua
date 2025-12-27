@@ -1,6 +1,7 @@
 --- @meta '../seekr.lua'
 --- @diagnostic disable: undefined-global
 
+--- @class Plugin
 local ImageSearch = {
 	name = "image",
 	title = "Images",
