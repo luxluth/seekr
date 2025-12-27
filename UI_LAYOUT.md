@@ -3,6 +3,7 @@
 This document provides ASCII diagrams of the `seekr` user interface structure to assist with theming and development.
 
 **Legend:**
+
 - `[ ]` represents a Widget container or element.
 - `name` indicates the CSS node name (e.g., `window`).
 - `.class` indicates a CSS class (e.g., `.has_input`).
@@ -48,6 +49,7 @@ The root container holds the shell, which vertically stacks the input area and t
 ## 2. Result Items
 
 ### Application Entry
+
 Used for launching applications.
 
 ```text
@@ -69,6 +71,7 @@ Used for launching applications.
 ```
 
 ### File Entry
+
 Used for local file search results.
 
 ```text
@@ -90,6 +93,7 @@ Used for local file search results.
 ```
 
 ### Math Result
+
 Displayed for calculator expressions.
 
 ```text
