@@ -21,6 +21,8 @@ cargo install seekr-util
 - `localsearch`, in addition to searching apps to launch, with this feature, it
   is possible to search through files using the same method as the gnome
   shell.
+- `Lua plugins`, extend the functionality of seekr by adding custom search
+  engines and tools using the Lua programming language.
 
 ### Requirements
 
@@ -44,6 +46,34 @@ This will run seekr without open a window
 
 On the first run of the app, configurations files will be generated into
 `$XDG_CONFIG_HOME/seekr` or `$HOME/.config/seekr`
+
+## Plugins
+
+`seekr` supports Lua plugins to extend its functionality. Plugins are loaded from
+the `plugins` directory in your configuration folder (e.g., `~/.config/seekr/plugins`).
+
+A plugin is a Lua script that returns a table containing metadata and event handlers:
+
+```lua
+return {
+    name = "my_plugin",
+    api_version = 1,
+    description = "A simple example plugin",
+    triggers = { "command=/test" },
+    onInput = function(term)
+        seekr:log("my_plugin", "User typed: " .. term)
+    end,
+}
+```
+
+Available event handlers: `onInput`, `onEnter`, `onActivate`, `onStartup`, `onExit`.
+
+The `seekr` global object provides several methods for plugins:
+- `seekr:show_info_box(plugin_name, title, body)`
+- `seekr:show_image_grid(plugin_name, images, subtitle)`
+- `seekr:show_console(plugin_name, command)`
+- `seekr:exec(command)`
+- `seekr:read(command)`
 
 ## Contributing
 
