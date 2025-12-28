@@ -2,11 +2,12 @@
 
 _It's easy_
 
-## Report issues
+## Report issues & suggestions
 
-I would be glad to receive issues on the application.
+I would be glad to receive issues or suggestions on the application.
+Whether it's a bug report or a suggestion for a new widget for plugins to use, don't hesitate to open an issue.
 
-> [Click here to open a new issue](https://github.com/luxluth/fsearch/issues/new)
+> [Click here to open a new issue](https://github.com/luxluth/seekr/issues/new)
 
 ## Writing some code
 

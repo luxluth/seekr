@@ -77,7 +77,8 @@ The `seekr` global object provides several methods for plugins:
 
 ## Contributing
 
-You can contribute to the project in two ways :
+You can contribute to the project in several ways:
 
 - Translating the app via the [./locales/app.yml](./locales/app.yml) file
 - Adding new functionalities to improve the tool
+- Suggesting new widgets for plugins to use
