@@ -77,8 +77,17 @@ function ImageSearch.onExit() end
 
 function ImageSearch.onStartup()
 	local config_dir = seekr:env("XDG_CONFIG_HOME")
+	local home_dir = seekr:env("HOME")
+
 	if config_dir:len() == 0 then
-		seekr:log(ImageSearch.name, "Unable to find the config dir")
+		seekr:log(ImageSearch.name, "Unable to find the $XDG_CONFIG_HOME")
+		if home_dir:len() ~= 0 then
+			config_dir = home_dir .. "/.config"
+		end
+	end
+
+	if config_dir:len() == 0 then
+		seekr:log(ImageSearch.name, "Cannot resolve config_dir")
 	else
 		seekr:log(ImageSearch.name, "user-dirs -> " .. config_dir .. "/user-dirs.dirs")
 
