@@ -5,7 +5,6 @@
 - [Rust](https://www.rust-lang.org/tools/install)
 - [gtk4](https://www.gtk.org/docs/installations/)
 - [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) (for gtk-layer-shell support)
-- [tinysparql](https://gnome.pages.gitlab.gnome.org/tinysparql/) (for localsearch)
 
 ## compiling
 
@@ -21,16 +20,10 @@ cargo build --release
 cargo build --release --features=gtk-layer-shell
 ```
 
-- localsearch support :
-
-```sh
-cargo build --release --features=localsearch
-```
-
 ## Warning
 
 If you encounter issues with gtk4 being "missing" despite installing it, you may
-need to install the developement oriented version of the `gtk4` package.
+need to install the development oriented version of the `gtk4` package.
 If that still doesn't work, you need to find the `gtk4.pc` file with:
 
 ```sh
