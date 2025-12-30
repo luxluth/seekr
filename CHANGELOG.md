@@ -1,3 +1,11 @@
+## v0.3.1
+
+### Bug Fixes
+
+- **Indexer**: Fixed a critical issue where the file search stopped working after reopening the application window due to the indexer thread being terminated prematurely.
+- **Indexer**: Optimized resource management and performance by reusing a persistent `IndexReader` instead of recreating it for every search request.
+- **Search**: Added comprehensive error logging for background search tasks to improve maintainability and debugging.
+
 ## v0.3.0
 
 ### Features
