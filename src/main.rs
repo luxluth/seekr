@@ -55,6 +55,7 @@ fn activate(
     opts: StartupOptions,
     to_plugins: Sender<plugin::MessageToPlugins>,
     rx_ui: async_channel::Receiver<plugin::PluginUiEvent>,
+    plugins: Vec<plugin::Plugin>,
 ) {
     let settings = gtk::Settings::default().expect("Failed to create GTK settings.");
     settings.set_gtk_icon_theme_name(Some(&config.general.theme));
@@ -279,6 +280,8 @@ fn activate(
         to_plugins,
         #[strong]
         completion_label,
+        #[strong]
+        plugins,
         move |e| {
             let term = e.text().to_string();
             if !term.is_empty() {
@@ -312,8 +315,15 @@ fn activate(
                 }
             }
             if !IN_MACRO_MODE.load(Ordering::Relaxed) {
-                let _ = tomanager.send(search::SearchEvent::Term(term.clone()));
-                let _ = to_plugins.send(plugin::MessageToPlugins::Term(term.clone()));
+                let exclusive_match = plugins.iter().any(|p| p.is_explicitly_triggered(&term));
+
+                if exclusive_match {
+                    let _ = tomanager.send(search::SearchEvent::Term("".to_string()));
+                    let _ = to_plugins.send(plugin::MessageToPlugins::Term(term.clone()));
+                } else {
+                    let _ = tomanager.send(search::SearchEvent::Term(term.clone()));
+                    let _ = to_plugins.send(plugin::MessageToPlugins::Term(term.clone()));
+                }
 
                 completion_label.set_text("");
                 if !term.is_empty() {
@@ -626,6 +636,7 @@ fn main() {
             pl.lookup();
         }
 
+        let plugins = pl.get_plugins();
         let to_plugins = pl.sx.clone();
 
         if !opts.help {
@@ -638,7 +649,14 @@ fn main() {
             let config = conf::Config::parse(config_file_path.clone());
             load_css(config.css.clone(), None);
 
-            activate(config.clone(), app, opts, to_plugins.clone(), rx_ui.clone());
+            activate(
+                config.clone(),
+                app,
+                opts,
+                to_plugins.clone(),
+                rx_ui.clone(),
+                plugins.clone(),
+            );
         });
 
         application.add_main_option(

@@ -155,6 +155,20 @@ impl Plugin {
         }
         false
     }
+
+    pub fn is_explicitly_triggered(&self, term: &str) -> bool {
+        for trigger in &self.triggers {
+            match trigger {
+                Trigger::Command(cmd) => {
+                    if term.starts_with(cmd) {
+                        return true;
+                    }
+                }
+                _ => continue,
+            }
+        }
+        false
+    }
 }
 
 struct SeekrGlobal {
@@ -398,6 +412,10 @@ impl PluginLoader {
             latest_seq,
             current_seq: 0,
         }
+    }
+
+    pub fn get_plugins(&self) -> Vec<Plugin> {
+        self.plugins.values().cloned().collect()
     }
 
     pub fn start(mut self) {
