@@ -18,9 +18,8 @@ cargo install seekr-util
 
 - `gtk-layer-shell` allow the seekr window to be displayed as a layer of the
   desktop _[wlr-layer-shell-unstable-v1](https://wayland.app/protocols/wlr-layer-shell-unstable-v1)_
-- `localsearch`, in addition to searching apps to launch, with this feature, it
-  is possible to search through files using the same method as the gnome
-  shell.
+- `file-indexer`, built-in blazing fast file search powered by [Tantivy](https://github.com/quickwit-oss/tantivy).
+  Configurable to include/exclude specific directories.
 - `Lua plugins`, extend the functionality of seekr by adding custom search
   engines and tools using the Lua programming language.
 
@@ -29,7 +28,6 @@ cargo install seekr-util
 - [Rust](https://www.rust-lang.org/tools/install)
 - [gtk4](https://www.gtk.org/docs/installations/)
 - [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell) (for gtk-layer-shell support)
-- [localsearch](https://gitlab.gnome.org/GNOME/localsearch) (for localsearch)
 
 ## Usage
 
@@ -40,7 +38,13 @@ $ seekr
 ```
 
 `seekr` can also be run silently by passing the `--silent` options.
-This will run seekr without open a window
+This will run seekr without open a window.
+
+To stop the running instance:
+
+```sh
+$ seekr --stop
+```
 
 ## Configuration
 
@@ -69,6 +73,7 @@ return {
 Available event handlers: `onInput`, `onEnter`, `onActivate`, `onStartup`, `onExit`.
 
 The `seekr` global object provides several methods for plugins:
+
 - `seekr:show_info_box(plugin_name, title, body)`
 - `seekr:show_image_grid(plugin_name, images, subtitle)`
 - `seekr:show_console(plugin_name, command)`
