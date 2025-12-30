@@ -188,7 +188,11 @@ impl InnerIndexer {
                     .to_string();
 
                 let path = PathBuf::from(&path_str);
-                let mime = mime_guess::from_path(&path).first().map(|m| m.to_string());
+                let mime = if path.is_dir() {
+                    Some("inode/directory".to_string())
+                } else {
+                    mime_guess::from_path(&path).first().map(|m| m.to_string())
+                };
                 let uri = format!("file://{}", path_str);
 
                 results.push(FileData {
@@ -256,7 +260,8 @@ fn perform_cold_scan(tx: Sender<IndexerMsg>, config: Config) {
             match entry {
                 Ok(dir_entry) => {
                     let path = dir_entry.path();
-                    if dir_entry.file_type().is_file() && should_index(&path, &config) {
+                    let ft = dir_entry.file_type();
+                    if (ft.is_file() || ft.is_dir()) && should_index(&path, &config) {
                         let _ = tx.send(IndexerMsg::FileChanged(path));
                     }
                 }
