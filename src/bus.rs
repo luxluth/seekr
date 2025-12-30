@@ -34,7 +34,6 @@ pub fn send_represent_event() {
     let c = Connection::new_session();
     match c {
         Ok(conn) => {
-            // try to send a signal to the app
             let proxy = conn.with_proxy(
                 APP_ID,
                 format!("/{}/window/1", APP_ID.replace('.', "/")),
@@ -48,6 +47,29 @@ pub fn send_represent_event() {
                     ("represent", vec![], PropMap::new()),
                 )
                 .unwrap();
+        }
+
+        Err(_) => {
+            println!("Could not connect to dbus.");
+        }
+    }
+}
+
+pub fn send_quit_event() {
+    let c = Connection::new_session();
+    match c {
+        Ok(conn) => {
+            let proxy = conn.with_proxy(
+                APP_ID,
+                format!("/{}/window/1", APP_ID.replace('.', "/")),
+                Duration::from_millis(5000),
+            );
+
+            let _ = proxy.method_call::<(), (&str, Vec<Variant<String>>, PropMap), &str, &str>(
+                "org.gtk.Actions",
+                "Activate",
+                ("quit", vec![], PropMap::new()),
+            );
         }
 
         Err(_) => {

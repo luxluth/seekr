@@ -51,6 +51,12 @@ pub struct GeneralConf {
 }
 
 #[derive(Clone, Debug)]
+pub struct FileIndexerConf {
+    pub exclude_directories: Vec<String>,
+    pub include_directories: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
 pub struct LayerShellConf {
     pub active: bool,
     pub top: i32,
@@ -63,6 +69,15 @@ impl Default for LayerShellConf {
             active: false,
             top: 50,
             left: -1,
+        }
+    }
+}
+
+impl Default for FileIndexerConf {
+    fn default() -> Self {
+        Self {
+            exclude_directories: vec![],
+            include_directories: vec![],
         }
     }
 }
@@ -84,6 +99,7 @@ pub type MacroMap = HashMap<String, MacroDef>;
 #[derive(Default, Clone, Debug)]
 pub struct Config {
     pub general: GeneralConf,
+    pub file_indexer: FileIndexerConf,
     pub css: String,
     pub macros: MacroMap,
     pub config_dir: PathBuf,
@@ -96,14 +112,18 @@ pub struct Config {
 #[derive(PartialEq, Eq)]
 enum ParsingState {
     General,
+    FileIndexer,
     Macros,
     GtkLayerShell,
     NotSet,
 }
 
 impl Config {
-    pub fn get_conf(conf_path: &PathBuf) -> (GeneralConf, MacroMap, LayerShellConf) {
+    pub fn get_conf(
+        conf_path: &PathBuf,
+    ) -> (GeneralConf, MacroMap, LayerShellConf, FileIndexerConf) {
         let mut general = GeneralConf::default();
+        let mut file_indexer = FileIndexerConf::default();
         let mut macros: MacroMap = MacroMap::new();
         let mut gtk_layer_shell_conf = LayerShellConf::default();
         if let Ok(mut f) = std::fs::File::open(conf_path) {
@@ -120,6 +140,12 @@ impl Config {
                         name: "general", ..
                     } => {
                         state = ParsingState::General;
+                    }
+                    ini_roundtrip::Item::Section {
+                        name: "file-indexer",
+                        ..
+                    } => {
+                        state = ParsingState::FileIndexer;
                     }
                     ini_roundtrip::Item::Section {
                         name: "gtk-layer-shell",
@@ -197,6 +223,34 @@ impl Config {
                             general.search_placeholder = val.unwrap().to_string();
                         }
                     }
+                    ini_roundtrip::Item::Property {
+                        key: "exclude_directories",
+                        val,
+                        ..
+                    } => {
+                        if state == ParsingState::FileIndexer && val.is_some() {
+                            file_indexer.exclude_directories = val
+                                .unwrap()
+                                .trim()
+                                .split(',')
+                                .map(|x| x.trim().to_string())
+                                .collect();
+                        }
+                    }
+                    ini_roundtrip::Item::Property {
+                        key: "include_directories",
+                        val,
+                        ..
+                    } => {
+                        if state == ParsingState::FileIndexer && val.is_some() {
+                            file_indexer.include_directories = val
+                                .unwrap()
+                                .trim()
+                                .split(',')
+                                .map(|x| x.trim().to_string())
+                                .collect();
+                        }
+                    }
 
                     ini_roundtrip::Item::Property { key, val, .. } => {
                         if state == ParsingState::Macros && val.is_some() {
@@ -210,7 +264,7 @@ impl Config {
                 }
             }
         }
-        return (general, macros, gtk_layer_shell_conf);
+        return (general, macros, gtk_layer_shell_conf, file_indexer);
     }
 
     pub fn parse(path: std::path::PathBuf) -> Self {
@@ -228,11 +282,12 @@ impl Config {
             }
         }
 
-        let (general, macros, gtk_layer_shell_conf) = Self::get_conf(&path);
+        let (general, macros, gtk_layer_shell_conf, file_indexer) = Self::get_conf(&path);
         debug!("{} macro(s) loaded", macros.len());
 
         return Self {
             general,
+            file_indexer,
             css,
             macros,
             config_dir,
@@ -257,7 +312,6 @@ pub fn init_config_dir() -> std::path::PathBuf {
 
     let config_file = config_dir.join("default.conf");
     let seekr_file = config_dir.join("seekr.lua");
-    debug!("config_path: {}", config_file.display());
 
     if !config_file.exists() {
         if let Ok(mut f) = std::fs::File::create(&config_file) {

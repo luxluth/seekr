@@ -10,17 +10,16 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 use std::sync::mpsc::Sender;
 use tokio::runtime::Runtime;
+use tracing::info;
 use ui::entry_button::EntryButton;
-#[cfg(feature = "localsearch")]
 use ui::file_button::FileButton;
 
 mod app;
 mod bus;
 mod conf;
 mod icons;
+mod indexer;
 mod locale;
-#[cfg(feature = "localsearch")]
-mod localsearch;
 mod plugin;
 mod resources;
 mod search;
@@ -33,13 +32,17 @@ static IN_MACRO_MODE: AtomicBool = AtomicBool::new(false);
 #[derive(Default, Clone, Copy)]
 struct StartupOptions {
     silent: bool,
+    stop: bool,
+    help: bool,
 }
 
 impl StartupOptions {
     fn read_args(&mut self) {
         for arg in std::env::args() {
             match arg.as_str() {
-                "--silent" => self.silent = true,
+                "--silent" | "-s" => self.silent = true,
+                "--stop" => self.stop = true,
+                "--help" => self.help = true,
                 _ => {}
             }
         }
@@ -64,6 +67,23 @@ fn activate(
         .decorated(false)
         .hide_on_close(true)
         .build();
+
+    // Signal handling
+    glib::unix_signal_add_local(
+        libc::SIGINT,
+        glib::clone!(move || {
+            info!("Exiting...");
+            std::process::exit(0);
+        }),
+    );
+
+    glib::unix_signal_add_local(
+        libc::SIGTERM,
+        glib::clone!(move || {
+            info!("Exiting...");
+            std::process::exit(0);
+        }),
+    );
 
     #[cfg(feature = "gtk-layer-shell")]
     {
@@ -117,7 +137,7 @@ fn activate(
 
     window.set_default_size(600, 0);
 
-    let (manager, (tomanager, frommanager)) = SearchManager::new();
+    let (manager, (tomanager, frommanager)) = SearchManager::new(config.clone());
     manager.manage();
 
     let entry = gtk::Text::builder()
@@ -142,6 +162,13 @@ fn activate(
         }
     ));
     window.add_action(&represent_action);
+
+    let quit_action = gtk::gio::SimpleAction::new("quit", None);
+    quit_action.connect_activate(glib::clone!(move |_, _| {
+        info!("Exiting...");
+        std::process::exit(0);
+    }));
+    window.add_action(&quit_action);
 
     let input_container = gtk::Box::builder()
         .height_request(60)
@@ -451,7 +478,6 @@ fn activate(
         }
     );
 
-    #[cfg(feature = "localsearch")]
     let files_box = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(2)
@@ -459,7 +485,6 @@ fn activate(
         .css_name("filesBox")
         .build();
 
-    #[cfg(feature = "localsearch")]
     let add_files = glib::clone!(
         #[strong]
         result_box,
@@ -473,7 +498,7 @@ fn activate(
         entry,
         #[strong]
         window,
-        move |files: Vec<localsearch::FileData>| {
+        move |files: Vec<indexer::FileData>| {
             while let Some(child) = files_box.first_child() {
                 files_box.remove(&child);
             }
@@ -540,7 +565,6 @@ fn activate(
                     search::ManagerEvent::Close => {
                         window.close();
                     }
-                    #[cfg(feature = "localsearch")]
                     search::ManagerEvent::LocalsearchData(file_datas) => add_files(file_datas),
                 }
             }
@@ -567,6 +591,16 @@ fn load_css(css: String, previous_provider: Option<gtk::CssProvider>) {
 }
 
 fn main() {
+    let mut opts = StartupOptions::default();
+    opts.read_args();
+
+    if opts.stop {
+        if bus::app_is_running() {
+            bus::send_quit_event();
+        }
+        return;
+    }
+
     if bus::app_is_running() {
         bus::send_represent_event();
     } else {
@@ -588,18 +622,19 @@ fn main() {
         let (tx_ui, rx_ui) = async_channel::unbounded();
 
         let mut pl = plugin::PluginLoader::new(config_dir, tx_ui);
-        pl.lookup();
+        if !opts.help {
+            pl.lookup();
+        }
 
         let to_plugins = pl.sx.clone();
 
-        std::thread::spawn(move || {
-            pl.start();
-        });
+        if !opts.help {
+            std::thread::spawn(move || {
+                pl.start();
+            });
+        }
 
         application.connect_activate(move |app| {
-            let mut opts = StartupOptions::default();
-            opts.read_args();
-
             let config = conf::Config::parse(config_file_path.clone());
             load_css(config.css.clone(), None);
 
@@ -612,6 +647,15 @@ fn main() {
             gtk::glib::OptionFlags::NONE,
             gtk::glib::OptionArg::None,
             &t!("silent_opt").to_string(),
+            None,
+        );
+
+        application.add_main_option(
+            "stop",
+            gtk::glib::Char::from(0),
+            gtk::glib::OptionFlags::NONE,
+            gtk::glib::OptionArg::None,
+            &t!("stop_opt").to_string(),
             None,
         );
 

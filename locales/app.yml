@@ -34,3 +34,10 @@ files:
   zh: "文件"
   ja: "ファイル"
   es: "Archivos"
+
+stop_opt:
+  en: Stop the running instance
+  fr: Arrêter l'instance en cours d'exécution
+  zh: 停止正在运行的实例
+  ja: 実行中のインスタンスを停止する
+  es: Detener la instancia en ejecución

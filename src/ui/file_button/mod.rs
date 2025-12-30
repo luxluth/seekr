@@ -1,5 +1,5 @@
 use crate::conf::Config;
-use crate::localsearch::FileData;
+use crate::indexer::FileData;
 use crate::search::{self, SearchEvent};
 use chrono::{DateTime, Local};
 use gtk::{glib, prelude::*};

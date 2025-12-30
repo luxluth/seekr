@@ -1,6 +1,5 @@
 use crate::app;
-#[cfg(feature = "localsearch")]
-use crate::localsearch;
+use crate::indexer::{self, IndexerMsg};
 
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
@@ -15,8 +14,7 @@ pub enum SearchEvent {
 
 pub enum ManagerEvent {
     DisplayEntries(Vec<app::AppEntry>),
-    #[cfg(feature = "localsearch")]
-    LocalsearchData(Vec<localsearch::FileData>),
+    LocalsearchData(Vec<indexer::FileData>),
     Mathematic(f64),
     Clear,
     Close,
@@ -27,10 +25,13 @@ pub struct SearchManager {
     outsender: async_channel::Sender<ManagerEvent>,
     matcher: SkimMatcherV2,
     entries: Vec<app::AppEntry>,
+    indexer_tx: Sender<IndexerMsg>,
 }
 
 impl SearchManager {
-    pub fn new() -> (
+    pub fn new(
+        config: crate::conf::Config,
+    ) -> (
         Self,
         (Sender<SearchEvent>, async_channel::Receiver<ManagerEvent>),
     ) {
@@ -41,6 +42,8 @@ impl SearchManager {
         score_cfg.bonus_first_char_multiplier = 1000;
         score_cfg.bonus_consecutive = 100;
 
+        let indexer_tx = indexer::spawn_indexer(config);
+
         (
             Self {
                 rx,
@@ -49,6 +52,7 @@ impl SearchManager {
                     .smart_case()
                     .score_config(score_cfg),
                 entries: app::collect_apps(),
+                indexer_tx,
             },
             (insender, outrx),
         )
@@ -90,24 +94,24 @@ impl SearchManager {
                                     .await;
                             }
                         } else {
-                            #[cfg(feature = "localsearch")]
-                            {
-                                if !query.starts_with("@") && !query.is_empty() {
-                                    let localsearch_sx = self.outsender.clone();
-                                    let term_clone = query.clone();
-                                    tokio::spawn(async move {
-                                        match localsearch::search(term_clone, 10) {
-                                            Ok(e) => {
-                                                let _ = localsearch_sx
-                                                    .send(ManagerEvent::LocalsearchData(e))
-                                                    .await;
-                                            }
-                                            Err(e) => {
-                                                tracing::error!("{e:?}");
-                                            }
-                                        };
-                                    });
-                                }
+                            if !query.starts_with("@") && !query.is_empty() {
+                                let localsearch_sx = self.outsender.clone();
+                                let indexer_tx = self.indexer_tx.clone();
+                                let query_clone = query.clone();
+
+                                tokio::task::spawn_blocking(move || {
+                                    let (tx, rx) = std::sync::mpsc::channel();
+                                    if let Ok(_) = indexer_tx.send(IndexerMsg::Search {
+                                        query: query_clone,
+                                        reply: tx,
+                                    }) {
+                                        if let Ok(results) = rx.recv() {
+                                            let _ = localsearch_sx.send_blocking(
+                                                ManagerEvent::LocalsearchData(results),
+                                            );
+                                        }
+                                    }
+                                });
                             }
 
                             let top_5 = &entry_results[..10.min(entry_results.len())];
@@ -122,6 +126,7 @@ impl SearchManager {
                     SearchEvent::Represent => self.entries = app::collect_apps(),
                     SearchEvent::RequestClose => {
                         let _ = self.outsender.send(ManagerEvent::Close).await;
+                        let _ = self.indexer_tx.send(IndexerMsg::Stop);
                     }
                 }
             }
