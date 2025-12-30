@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/gtk-rs/gtk4-rs/gtk4:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install dependencies
+        run: sudo dnf install -y gtk4-devel dbus dbus-devel pkgconf-pkg-config
+
+      - name: Build Release
+        run: cargo build --release --locked
+
+      - name: Prepare Release Artifacts
+        run: |
+          mkdir -p release/seekr-x86_64-linux
+          cp target/release/seekr release/seekr-x86_64-linux/
+          cp README.md LICENSE release/seekr-x86_64-linux/
+          cp -r plugins release/seekr-x86_64-linux/
+
+          cd release
+          tar -czvf seekr-x86_64-linux.tar.gz seekr-x86_64-linux
+          sha256sum seekr-x86_64-linux.tar.gz > checksum.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release/seekr-x86_64-linux.tar.gz
+            release/checksum.txt
+          generate_release_notes: true
