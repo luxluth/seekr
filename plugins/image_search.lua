@@ -47,11 +47,6 @@ function ImageSearch.onInput(text)
 	-- Remove the command trigger if present (e.g. "/image ")
 	local query = text:gsub("^/image%s*", "")
 
-	if query == "" then
-		-- maybe show all? or recent?
-		return
-	end
-
 	local count = 0
 	local images = {}
 	for _, path in pairs(ImageSearch.index) do
@@ -99,6 +94,7 @@ function ImageSearch.onStartup()
 				if string.sub(line, 1, #pattern) == pattern then
 					local input, _ = string.sub(line, #pattern + 1):gsub('"', "")
 					local pictures_dir, _ = expand_env_vars(input)
+					seekr:log(ImageSearch.name, "pictures_dir" .. pictures_dir)
 					for _, path in pairs(seekr:glob(pictures_dir .. "/**/*")) do
 						if is_image_path(path) then
 							table.insert(index, path)

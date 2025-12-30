@@ -11,7 +11,7 @@ use notify_debouncer_mini::{DebounceEventResult, new_debouncer, notify::Recursiv
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
-use tantivy::{Index, IndexWriter, ReloadPolicy, TantivyDocument, Term};
+use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, TantivyDocument, Term};
 use tracing::{debug, error, info};
 
 const MEMORY_BUDGET: usize = 50_000_000; // 50MB
@@ -76,12 +76,12 @@ pub enum IndexerMsg {
     },
     FileChanged(PathBuf),
     Tick,
-    Stop,
 }
 
 struct InnerIndexer {
     index: Index,
     writer: IndexWriter,
+    reader: IndexReader,
     filename_field: Field,
     path_field: Field,
     config: Config,
@@ -106,10 +106,15 @@ impl InnerIndexer {
         };
 
         let writer = index.writer(MEMORY_BUDGET)?;
+        let reader = index
+            .reader_builder()
+            .reload_policy(ReloadPolicy::Manual)
+            .try_into()?;
 
         Ok(Self {
             index,
             writer,
+            reader,
             filename_field,
             path_field,
             config,
@@ -148,20 +153,11 @@ impl InnerIndexer {
     }
 
     fn search(&self, query_str: &str) -> Vec<FileData> {
-        let reader = match self
-            .index
-            .reader_builder()
-            .reload_policy(ReloadPolicy::Manual)
-            .try_into()
-        {
-            Ok(r) => r,
-            Err(e) => {
-                error!("Failed to get index reader: {}", e);
-                return vec![];
-            }
-        };
+        if let Err(e) = self.reader.reload() {
+            error!("Failed to reload index reader: {}", e);
+        }
 
-        let searcher = reader.searcher();
+        let searcher = self.reader.searcher();
         let query_parser = QueryParser::for_index(&self.index, vec![self.filename_field]);
 
         // Simple query parsing
@@ -285,6 +281,7 @@ pub fn spawn_indexer(config: Config) -> Sender<IndexerMsg> {
     let config_clone = config.clone();
 
     thread::spawn(move || {
+        info!("Indexer started");
         let index_dir = get_index_dir();
         let mut indexer = match InnerIndexer::new(&index_dir, config.clone()) {
             Ok(i) => i,
@@ -376,10 +373,6 @@ pub fn spawn_indexer(config: Config) -> Sender<IndexerMsg> {
                         indexer.commit();
                         dirty = false;
                     }
-                }
-                IndexerMsg::Stop => {
-                    indexer.commit();
-                    break;
                 }
             }
         }

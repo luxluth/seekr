@@ -101,13 +101,21 @@ impl SearchManager {
 
                                 tokio::task::spawn_blocking(move || {
                                     let (tx, rx) = std::sync::mpsc::channel();
-                                    if let Ok(_) = indexer_tx.send(IndexerMsg::Search {
+                                    match indexer_tx.send(IndexerMsg::Search {
                                         query: query_clone,
                                         reply: tx,
                                     }) {
-                                        if let Ok(results) = rx.recv() {
-                                            let _ = localsearch_sx.send_blocking(
-                                                ManagerEvent::LocalsearchData(results),
+                                        Ok(_) => {
+                                            if let Ok(results) = rx.recv() {
+                                                let _ = localsearch_sx.send_blocking(
+                                                    ManagerEvent::LocalsearchData(results),
+                                                );
+                                            }
+                                        }
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "Failed to send search query to indexer: {}",
+                                                e
                                             );
                                         }
                                     }
@@ -126,7 +134,7 @@ impl SearchManager {
                     SearchEvent::Represent => self.entries = app::collect_apps(),
                     SearchEvent::RequestClose => {
                         let _ = self.outsender.send(ManagerEvent::Close).await;
-                        let _ = self.indexer_tx.send(IndexerMsg::Stop);
+                        let _ = self.indexer_tx.send(IndexerMsg::Tick);
                     }
                 }
             }
