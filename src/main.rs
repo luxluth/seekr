@@ -69,23 +69,6 @@ fn activate(
         .hide_on_close(true)
         .build();
 
-    // Signal handling
-    glib::unix_signal_add_local(
-        libc::SIGINT,
-        glib::clone!(move || {
-            info!("Exiting...");
-            std::process::exit(0);
-        }),
-    );
-
-    glib::unix_signal_add_local(
-        libc::SIGTERM,
-        glib::clone!(move || {
-            info!("Exiting...");
-            std::process::exit(0);
-        }),
-    );
-
     #[cfg(feature = "gtk-layer-shell")]
     {
         if config.is_wayland

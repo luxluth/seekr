@@ -166,7 +166,7 @@ impl InnerIndexer {
             Err(_) => return vec![], // Handle invalid queries gracefully
         };
 
-        let top_docs = match searcher.search(&query, &TopDocs::with_limit(20)) {
+        let top_docs = match searcher.search(&query, &TopDocs::with_limit(20).order_by_score()) {
             Ok(d) => d,
             Err(e) => {
                 error!("Search error: {}", e);
